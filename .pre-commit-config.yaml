@@ -1,0 +1,24 @@
+default_stages: [commit]
+default_language_version:
+  python: python3
+
+repos:
+  - repo: https://github.com/lorenzwalthert/precommit
+    rev: v0.3.2.9007
+    hooks:
+      - id: style-files
+        args:
+          ['--ignore-start="^# styler: off$"', '--ignore-stop="^# styler: on$"']
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=200"]
+      - id: check-yaml
+      - id: mixed-line-ending
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/psf/black
+    rev: 22.10.0
+    hooks:
+    - id: black
