@@ -31,7 +31,7 @@ module load python/3.10.4
 module load hdf5/1.10.1
 ```
 
-1. Create a new virtual environment by running the command
+3. Create a new virtual environment by running the command
 
 ```bash
 python -m venv ~/sib_ai_benchmark/.venv
