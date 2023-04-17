@@ -1,1 +1,9 @@
+anndata
+matplotlib
+numpy
+pandas
 pre-commit
+scanpy
+scipy
+sklearn
+wget
