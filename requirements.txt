@@ -5,5 +5,5 @@ pandas
 pre-commit
 scanpy
 scipy
-sklearn
+scikit-learn
 wget
