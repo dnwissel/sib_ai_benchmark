@@ -31,11 +31,10 @@ module load python/3.10.4
 module load hdf5/1.10.1
 ```
 
-3. Create a new virtual environment and add it to `.gitignore` by running the command
+1. Create a new virtual environment by running the command
 
 ```bash
 python -m venv ~/sib_ai_benchmark/.venv
-echo ".venv/" >> ~/sib_ai_benchmark/.gitignore
 ```
 
 4. Activate the virtual environment by running the following command. This will change your shell prompt to indicate that you are now working inside the virtual environment. Run`deactivate`  to exit the virtual environment.
