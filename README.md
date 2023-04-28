@@ -31,7 +31,7 @@ module load python/3.10.4
 module load hdf5/1.10.1
 ```
 
-3. Create a new virtual environment by running the command
+1. Create a new virtual environment by running the command
 
 ```bash
 python -m venv ~/sib_ai_benchmark/.venv
@@ -49,10 +49,10 @@ source ~/sib_ai_benchmark/.venv/bin/activate
 pip3 install --upgrade -r   ~/sib_ai_benchmark/requirements.txt
 ```
 
-6. Run the script by running
+6. Run the application by running the following command. `~/sib_ai_benchmark/src/app.py` should be replaced by your own script in case of testing the configuration.
   
 ```bash
-bsub -n 4  -W 24:00 -o log -R "rusage[mem=4096]" python script.py
+bsub -n 10  -W 24:00 -o log -R "rusage[mem=2048]" python ~/sib_ai_benchmark/src/app.py
 ```
 
 7. Enable the environments upon next login session and set alias by running
