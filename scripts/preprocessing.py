@@ -33,7 +33,7 @@ def preprocess_per_batch(batch, args):
         (batch.obs.n_genes_by_counts < args.n_genes_by_counts_upper)
         & (batch.obs.pct_counts_mt < args.pct_counts_mt_upper)
     ]
-    batch.layers["preprocessed"] = batch.X.copy()
+    batch.layers["preprocessed"] = batch.X
     sc.pp.normalize_total(
         batch, target_sum=args.normalize_target_sum, layer="preprocessed"
     )
