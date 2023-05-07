@@ -1,7 +1,10 @@
+import scvi
 import scanpy as sc
 import anndata as ad
 import argparse
 import logging
+import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from pathlib import Path
 from abc import ABC, abstractmethod
 
@@ -13,8 +16,8 @@ logging.basicConfig(
 
 
 class BatchCorrector(ABC):
-    def __init__(self, batch_key):
-        self.batch_key = batch_key
+    def __init__(self, keys):
+        self.keys = keys
 
     @abstractmethod
     def correct_batch_effect(self, data):
@@ -23,12 +26,28 @@ class BatchCorrector(ABC):
 
 class RegressOut(BatchCorrector):
     def correct_batch_effect(self, data):
-        sc.pp.regress_out(data, self.batch_key)
+        keys_num = []
+        keys_to_drop = []
+        for key in self.keys:
+            print(f"{key}: {data.obs[key].dtype}")
+            if not is_numeric_dtype(data.obs[key]):
+                print(f"Factorizing {key}")
+                data.obs[f"{key}_num"] = pd.factorize(data.obs[key])[0]
+                new_col = data.obs[f"{key}_num"]
+                print(f"{key}_num: {new_col.dtype}")
+                keys_num.append(f"{key}_num")
+                keys_to_drop.append(f"{key}_num")
+            else:
+                print(f"{key}: {data.obs[key].dtype}")
+                keys_num.append(key)
+        print(f"keys_num: {keys_num}")
+        sc.pp.regress_out(data, keys_num)
+        data.obs.drop(columns=keys_to_drop, inplace=True)
 
 
 class Combat(BatchCorrector):
     def correct_batch_effect(self, data):
-        sc.pp.combat(data, self.batch_key)
+        sc.pp.combat(data, self.keys[0])
 
 
 def main():
@@ -58,10 +77,12 @@ def main():
         help="The name of the tissue. \nIf not provided, will be set to 'unknown_tissue'.",
     )
     parser.add_argument(
-        "--batch_key",
+        "--keys",
+        "--list",
+        nargs="+",
         type=str,
-        default="batch",
-        help="The name of the column to identify batches.",
+        default=["batch", "experiment_id"],
+        help="The list of columns to regress on.",
     )
     parser.add_argument(
         "--batch_correction_method",
@@ -79,14 +100,17 @@ def main():
     logging.info(
         f"Read in batch data: {{file.name: data.shape}}: \n{dict(zip(file_names, data_shape))}"
     )
-    data = ad.concat(data_list, merge="same")
+    data = data_list[0]
+    for d in data_list[1:]:
+        data = data.concatenate(d, join="inner")
+    # data = ad.concat(data_list, merge='same')
     logging.info(f"Concatenated data.shape: {data.shape}")
     logging.info(f"Batch correction method: {args.batch_correction_method}")
 
     if args.batch_correction_method == "regress_out":
-        batch_corrector = RegressOut(args.batch_key)
+        batch_corrector = RegressOut(args.keys)
     elif args.batch_correction_method == "combat":
-        batch_corrector = Combat(args.batch_key)
+        batch_corrector = Combat(args.keys)
     else:
         raise ValueError("Please specify a valid batch correction method.")
 
