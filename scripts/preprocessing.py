@@ -19,7 +19,7 @@ def split_data_by_category(data, category):
     return category_counts, category_data_dict
 
 
-def preprocess_per_batch(batch, args):
+def preprocess_batch(batch, args):
     sc.pp.filter_cells(batch, min_genes=args.min_genes)
     sc.pp.filter_genes(batch, min_cells=args.min_cells)
     if args.mt_start is not None and args.gene_name_column is not None:
@@ -33,19 +33,20 @@ def preprocess_per_batch(batch, args):
         (batch.obs.n_genes_by_counts < args.n_genes_by_counts_upper)
         & (batch.obs.pct_counts_mt < args.pct_counts_mt_upper)
     ]
-    batch.layers["preprocessed"] = batch.X
-    sc.pp.normalize_total(
-        batch, target_sum=args.normalize_target_sum, layer="preprocessed"
-    )
-    sc.pp.log1p(batch, layer="preprocessed")
+    batch.layers["counts"] = batch.X.copy()
+    sc.pp.normalize_total(batch, target_sum=args.normalize_target_sum)
+    sc.pp.log1p(batch)
+    batch.raw = batch
     if args.filter_hvg:
         sc.pp.highly_variable_genes(
             batch,
-            layer="preprocessed",
+            layer="counts",
             min_mean=args.filter_hvg_params[0],
             max_mean=args.filter_hvg_params[1],
             min_disp=args.filter_hvg_params[2],
         )
+        batch = batch[:, batch.var.highly_variable].copy()
+
     return batch
 
 
@@ -58,36 +59,36 @@ def main():
     parser.add_argument(
         "--read_path",
         type=lambda i: p.joinpath("data-raw", i),
-        # default=p.joinpath("data-raw", "ASAP41_final.h5ad"),  # ASAP
-        default=p.joinpath("data-raw", "SRP200614.h5ad"),  # Bgee
+        default=p.joinpath("data-raw", "ASAP41_final.h5ad"),  # ASAP
+        # default=p.joinpath("data-raw", "SRP200614.h5ad"),  # Bgee
         help="Path to read the data file",
     )
     parser.add_argument(
         "--save_path",
         type=lambda i: p.joinpath("data", i),
-        # default=p.joinpath("data", "asap"),  # ASAP
-        default=p.joinpath("data", "bgee"),  # Bgee
+        default=p.joinpath("data", "asap"),  # ASAP
+        # default=p.joinpath("data", "bgee"),  # Bgee
         help="Path to save the preprocessed data",
     )
     parser.add_argument(
         "--tissue_column",
         type=str,
-        # default="asap_tissue",  # ASAP
-        default=None,  # Bgee
+        default="asap_tissue",  # ASAP
+        # default=None,  # Bgee
         help="Column name of tissues. \nIf not provided, will be set to None.",
     )
     parser.add_argument(
         "--tissue_name",
         type=str,
-        # default="unknown_tissue",  # ASAP
-        default="gut",  # Bgee
+        default="unknown_tissue",  # ASAP
+        # default="gut",  # Bgee
         help="If there is no tissue column \nand all the data is from the same known tissue,\nplease specify the tissue name. \nIf not provided, will be set to 'unknown_tissue'.",
     )
     parser.add_argument(
         "--batch_column",
         type=str,
-        # default="batch",  # ASAP
-        default=None,  # Bgee
+        default="batch",  # ASAP
+        # default=None,  # Bgee
         help="Column name of batches. \nIf not provided, will be set to None.",
     )
     parser.add_argument(
@@ -111,15 +112,15 @@ def main():
     parser.add_argument(
         "--gene_name_column",
         type=str,
-        # default="gene_name",  # ASAP
-        default=None,  # Bgee
+        default="gene_name",  # ASAP
+        # default=None,  # Bgee
         help="Column of gene names in var. \nIf not provided, will be set to None.",
     )
     parser.add_argument(
         "--mt_start",
         type=str,
-        # default="mt:",  # ASAP
-        default=None,  # Bgee
+        default="mt:",  # ASAP
+        # default=None,  # Bgee
         help="Mitochondrial genes names start with (mt_start). \nIf not provided, will be set to None.",
     )
     parser.add_argument(
@@ -180,14 +181,14 @@ def main():
         Path(args.save_path.joinpath(f"{tissue_}")).mkdir(parents=True, exist_ok=True)
         batch_pp_dict = {}
         for batch_, batch_data in batch_dict.items():
-            batch_pp = preprocess_per_batch(batch_data, args)
+            batch_pp = preprocess_batch(batch_data, args)
             logging.info(f"batch {batch_} batch_pp.shape = {batch_pp.shape}")
             batch_pp_dict[batch_] = batch_pp
             save_path = args.save_path.joinpath(
                 f"{tissue_}", f"{tissue_}_batch_{batch_}_pp.h5ad"
             )
             batch_pp.write(save_path)
-            logging.info(f"batch_{batch_}_pp.h5ad saved to {save_path}")
+            logging.info(f"Preprocessed data saved to {save_path}")
 
 
 if __name__ == "__main__":
