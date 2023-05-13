@@ -45,9 +45,20 @@ class RegressOut(BatchCorrector):
         data.obs.drop(columns=keys_to_drop, inplace=True)
 
 
-class Combat(BatchCorrector):
+class Scanvi(BatchCorrector):
     def correct_batch_effect(self, data):
-        sc.pp.combat(data, self.keys[0])
+        scvi.model.SCVI.setup_anndata(data, layer="counts", batch_key=self.keys[0])
+        vae = scvi.model.SCVI(data)
+        vae.train()
+        data.obsm["X_scVI"] = vae.get_latent_representation()
+        lvae = scvi.model.SCANVI.from_scvi_model(
+            vae,
+            adata=data,
+            labels_key="cellTypeName",
+            unlabeled_category="Unknown",
+        )
+        lvae.train(max_epochs=20, n_samples_per_label=100)
+        data.obsm["X_scANVI"] = lvae.get_latent_representation(data)
 
 
 def main():
@@ -87,9 +98,9 @@ def main():
     parser.add_argument(
         "--batch_correction_method",
         type=str,
-        default="regress_out",
-        # default="combat",
-        help="The batch correction method to use. \nIf not provided, will be set to 'regress_out'.",
+        # default="regress_out",
+        default="scanvi",
+        help="The batch correction method to use. \nIf not provided, will be set to 'scanvi'.",
     )
     args = parser.parse_args()
 
@@ -101,16 +112,14 @@ def main():
         f"Read in batch data: {{file.name: data.shape}}: \n{dict(zip(file_names, data_shape))}"
     )
     data = data_list[0]
-    for d in data_list[1:]:
-        data = data.concatenate(d, join="inner")
-    # data = ad.concat(data_list, merge='same')
+    data = ad.concat(data_list, merge="same")
     logging.info(f"Concatenated data.shape: {data.shape}")
     logging.info(f"Batch correction method: {args.batch_correction_method}")
 
     if args.batch_correction_method == "regress_out":
         batch_corrector = RegressOut(args.keys)
-    elif args.batch_correction_method == "combat":
-        batch_corrector = Combat(args.keys)
+    elif args.batch_correction_method == "scanvi":
+        batch_corrector = Scanvi(args.keys)
     else:
         raise ValueError("Please specify a valid batch correction method.")
 
