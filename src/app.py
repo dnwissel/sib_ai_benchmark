@@ -171,7 +171,7 @@ if __name__ == "__main__":
     path_bgee = data_dir + "/SRP200614.h5ad"
 
     # Run App
-    app = App(tuning_mode="full")
+    app = App(tuning_mode="sample")
     
     params = dict(
         selected_models=['LinearSVM'], 
