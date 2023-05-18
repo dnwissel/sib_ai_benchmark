@@ -375,3 +375,12 @@ rsconnect/
 renv/*
 .Rproj.user
 
+# Large data file
+data-raw/*
+
+# Log
+log
+*.log
+
+
+
