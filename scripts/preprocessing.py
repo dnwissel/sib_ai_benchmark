@@ -19,13 +19,10 @@ def split_data_by_category(data, category):
     return category_counts, category_data_dict
 
 
-def preprocess_batch(batch, args):
+def preprocess_batch(batch, mt_gene_id, args):
     sc.pp.filter_cells(batch, min_genes=args.min_genes)
     sc.pp.filter_genes(batch, min_cells=args.min_cells)
-    if args.mt_start is not None and args.gene_name_column is not None:
-        batch.var["mt"] = batch.var[args.gene_name_column].str.startswith(args.mt_start)
-    else:
-        batch.var["mt"] = False
+    batch.var["mt"] = batch.var[args.gene_id_column].isin(mt_gene_id["ensembl_gene_id"])
     sc.pp.calculate_qc_metrics(
         batch, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True
     )
@@ -59,36 +56,62 @@ def main():
     parser.add_argument(
         "--read_path",
         type=lambda i: p.joinpath("data-raw", i),
-        default=p.joinpath("data-raw", "ASAP41_final.h5ad"),  # ASAP
-        # default=p.joinpath("data-raw", "SRP200614.h5ad"),  # Bgee
+        # default=p.joinpath("data-raw", "ASAP41_final.h5ad"),  # ASAP
+        # default=p.joinpath("data-raw", "asap_haltere.h5ad"),  # ASAP haltere
+        default=p.joinpath("data-raw", "SRP200614.h5ad"),  # Bgee
         help="Path to read the data file",
     )
     parser.add_argument(
         "--save_path",
         type=lambda i: p.joinpath("data", i),
-        default=p.joinpath("data", "asap"),  # ASAP
-        # default=p.joinpath("data", "bgee"),  # Bgee
+        # default=p.joinpath("data", "asap"),  # ASAP
+        default=p.joinpath("data", "bgee"),  # Bgee
         help="Path to save the preprocessed data",
+    )
+    parser.add_argument(
+        "--organism",
+        type=str,
+        default="dmelanogaster",
+        help="Organism (string) to query the mitochondrial gene symbols in ensembl biomart",
+    )
+    parser.add_argument(
+        "--gene_id_column",
+        type=str,
+        default="gene_id",
+        help="Column of gene id in var",
+    )
+    parser.add_argument(
+        "--doublet_column",
+        type=str,
+        default="scrublet_call",
+        help="Column that indicates singlet/doublet in obs",
+    )
+    parser.add_argument(
+        "--singlet_value",
+        type=str,
+        # default="0.0",  # ASAP
+        default="Singlet",  # Bgee
+        help="Value in doublet column that indicates singlet",
     )
     parser.add_argument(
         "--tissue_column",
         type=str,
-        default="asap_tissue",  # ASAP
-        # default=None,  # Bgee
+        # default="asap_tissue",  # ASAP
+        default=None,  # Bgee
         help="Column name of tissues. \nIf not provided, will be set to None.",
     )
     parser.add_argument(
         "--tissue_name",
         type=str,
-        default="unknown_tissue",  # ASAP
-        # default="gut",  # Bgee
+        # default="unknown_tissue",  # ASAP
+        default="gut",  # Bgee
         help="If there is no tissue column \nand all the data is from the same known tissue,\nplease specify the tissue name. \nIf not provided, will be set to 'unknown_tissue'.",
     )
     parser.add_argument(
         "--batch_column",
         type=str,
-        default="batch",  # ASAP
-        # default=None,  # Bgee
+        # default="batch",  # ASAP
+        default=None,  # Bgee
         help="Column name of batches. \nIf not provided, will be set to None.",
     )
     parser.add_argument(
@@ -108,20 +131,6 @@ def main():
         type=int,
         default=3,
         help="Keep genes that are found in >= (min_cells) cells",
-    )
-    parser.add_argument(
-        "--gene_name_column",
-        type=str,
-        default="gene_name",  # ASAP
-        # default=None,  # Bgee
-        help="Column of gene names in var. \nIf not provided, will be set to None.",
-    )
-    parser.add_argument(
-        "--mt_start",
-        type=str,
-        default="mt:",  # ASAP
-        # default=None,  # Bgee
-        help="Mitochondrial genes names start with (mt_start). \nIf not provided, will be set to None.",
     )
     parser.add_argument(
         "--n_genes_by_counts_upper",
@@ -158,6 +167,9 @@ def main():
 
     data = ad.read_h5ad(args.read_path)
     logging.info(f"data.shape: {data.shape}")
+    data = data[data.obs[args.doublet_column] == args.singlet_value]
+    logging.info(f"Doublets removed: data.shape: {data.shape}")
+
     if args.tissue_column is None:
         tissue_dict = {args.tissue_name: data}
         logging.info(f"tissue_counts: {args.tissue_name}  {data.shape[0]}")
@@ -166,7 +178,9 @@ def main():
             data, category=args.tissue_column
         )
         logging.info(f"tissue_counts: {tissue_counts}")
-
+    mt_gene_id = sc.queries.mitochondrial_genes(
+        args.organism, chromosome="mitochondrion_genome", attrname="ensembl_gene_id"
+    )
     for tissue_, tissue_data in tissue_dict.items():
         if args.batch_column is None:
             batch_dict = {args.batch_name: tissue_data}
@@ -181,7 +195,7 @@ def main():
         Path(args.save_path.joinpath(f"{tissue_}")).mkdir(parents=True, exist_ok=True)
         batch_pp_dict = {}
         for batch_, batch_data in batch_dict.items():
-            batch_pp = preprocess_batch(batch_data, args)
+            batch_pp = preprocess_batch(batch_data, mt_gene_id, args)
             logging.info(f"batch {batch_} batch_pp.shape = {batch_pp.shape}")
             batch_pp_dict[batch_] = batch_pp
             save_path = args.save_path.joinpath(
