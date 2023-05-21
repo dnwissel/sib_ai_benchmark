@@ -21,8 +21,6 @@ def split_data_by_category(data, category):
 
 
 def preprocess_batch(batch, args):
-    sc.pp.filter_cells(batch, min_genes=args.min_genes)
-    sc.pp.filter_genes(batch, min_cells=args.min_cells)
     sc.pp.calculate_qc_metrics(
         batch, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True
     )
@@ -182,12 +180,13 @@ def main():
     logging.info(f"data.shape: {data.shape}")
     data = data[data.obs[args.doublet_column] == args.singlet_value]
     logging.info(f"Doublets removed: data.shape: {data.shape}")
-
+    sc.pp.filter_cells(data, min_genes=args.min_genes)
+    sc.pp.filter_genes(data, min_cells=args.min_cells)
+    # OR: only keep genes that appear in more than 3 cells in every batch
     mt_gene_id = sc.queries.mitochondrial_genes(
         args.organism, chromosome="mitochondrion_genome", attrname="ensembl_gene_id"
     )
     data.var["mt"] = data.var[args.gene_id_column].isin(mt_gene_id["ensembl_gene_id"])
-
     cell_cycle_genes_ref = pd.read_csv(args.cell_cycle_genes_reference)
     s_genes_ref = cell_cycle_genes_ref.loc[cell_cycle_genes_ref.phase == 'S']['geneID']
     g2m_genes_ref = cell_cycle_genes_ref.loc[cell_cycle_genes_ref.phase == 'G2/M']['geneID']
