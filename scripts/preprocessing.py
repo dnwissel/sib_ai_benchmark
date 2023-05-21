@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 import logging
+import numpy as np
 import pandas as pd
 import scanpy as sc
 import anndata as ad
@@ -28,7 +29,7 @@ def preprocess_batch(batch, args):
         (batch.obs.n_genes_by_counts < args.n_genes_by_counts_upper)
         & (batch.obs.pct_counts_mt < args.pct_counts_mt_upper)
     ]
-    batch.layers["counts"] = batch.X.copy()
+    batch.layers["counts"] = batch.X
     sc.pp.normalize_total(batch, target_sum=args.normalize_target_sum)
     sc.pp.log1p(batch)
     batch.raw = batch
@@ -40,7 +41,7 @@ def preprocess_batch(batch, args):
             max_mean=args.filter_hvg_params[1],
             min_disp=args.filter_hvg_params[2],
         )
-        batch = batch[:, batch.var.highly_variable].copy()
+        batch = batch[:, batch.var.highly_variable]
 
     return batch
 
@@ -55,15 +56,17 @@ def main():
         "--read_path",
         type=lambda i: p.joinpath("data-raw", i),
         # default=p.joinpath("data-raw", "ASAP41_final.h5ad"),  # ASAP
-        default=p.joinpath("data-raw", "asap_haltere.h5ad"),  # ASAP haltere
+        default=p.joinpath(
+            "data-raw", "asap-tissue", "asap_antenna.h5ad"
+        ),  # ASAP tissue
         # default=p.joinpath("data-raw", "SRP200614.h5ad"),  # Bgee
         help="Path to read the data file",
     )
     parser.add_argument(
         "--save_path",
         type=lambda i: p.joinpath("data", i),
-        default=p.joinpath("data", "asap"),  # ASAP
-        # default=p.joinpath("data", "bgee"),  # Bgee
+        default=p.joinpath("data", "asap", "preprocessed"),  # ASAP
+        # default=p.joinpath("data", "bgee", "preprocessed"),  # Bgee
         help="Path to save the preprocessed data",
     )
     parser.add_argument(
@@ -179,24 +182,45 @@ def main():
     data = ad.read_h5ad(args.read_path)
     logging.info(f"data.shape: {data.shape}")
     data = data[data.obs[args.doublet_column] == args.singlet_value]
-    logging.info(f"Doublets removed: data.shape: {data.shape}")
+    logging.info(f"Doublets removed data.shape: {data.shape}")
     sc.pp.filter_cells(data, min_genes=args.min_genes)
-    sc.pp.filter_genes(data, min_cells=args.min_cells)
-    # OR: only keep genes that appear in more than 3 cells in every batch
+
+    # Keep genes that appear in more than min_cells cells in every batch
+    batch_dict = {i: data[data.obs.batch == i] for i in data.obs.batch.unique()}
+    filtered_genes = []
+    for _, v in batch_dict.items():
+        l = sc.pp.filter_genes(v, min_cells=3, inplace=False)[0]
+        filtered_genes.append(l)
+    filtered_genes_all = np.all(filtered_genes, axis=0)
+    logging.info(
+        f"Filtered out {len(filtered_genes_all)} genes that are not expressed in at least {args.min_cells} cells in every batch."
+    )
+    data = data[:, filtered_genes_all]
+    logging.info(f"data.shape: {data.shape}")
+
+    # Identify mitonchondrial genes
     mt_gene_id = sc.queries.mitochondrial_genes(
         args.organism, chromosome="mitochondrion_genome", attrname="ensembl_gene_id"
     )
     data.var["mt"] = data.var[args.gene_id_column].isin(mt_gene_id["ensembl_gene_id"])
+    logging.info(f"Identified {sum(data.var.mt)} mitochondrial genes.")
+
+    # Score cell cycle
     cell_cycle_genes_ref = pd.read_csv(args.cell_cycle_genes_reference)
-    s_genes_ref = cell_cycle_genes_ref.loc[cell_cycle_genes_ref.phase == 'S']['geneID']
-    g2m_genes_ref = cell_cycle_genes_ref.loc[cell_cycle_genes_ref.phase == 'G2/M']['geneID']
+    s_genes_ref = cell_cycle_genes_ref.loc[cell_cycle_genes_ref.phase == "S"]["geneID"]
+    g2m_genes_ref = cell_cycle_genes_ref.loc[cell_cycle_genes_ref.phase == "G2/M"][
+        "geneID"
+    ]
     cc_col = args.cell_cycle_genes_column
     s_genes = data.var.loc[data.var.gene_id.isin(s_genes_ref), cc_col]
     g2m_genes = data.var.loc[data.var.gene_id.isin(g2m_genes_ref), cc_col]
     data.var_names = data.var[cc_col].values
-    sc.tl.score_genes_cell_cycle(data, s_genes=s_genes, g2m_genes=g2m_genes, use_raw=False)
+    sc.tl.score_genes_cell_cycle(
+        data, s_genes=s_genes, g2m_genes=g2m_genes, use_raw=False
+    )
     data.obs["cell_cycle_diff"] = data.obs["S_score"] - data.obs["G2M_score"]
-    
+    logging.info(f"Scored cell cycle and calculated 'cell_cycle_diff'.")
+
     if args.tissue_column is None:
         tissue_dict = {args.tissue_name: data}
         logging.info(f"tissue_counts: {args.tissue_name}  {data.shape[0]}")
@@ -205,7 +229,7 @@ def main():
             data, category=args.tissue_column
         )
         logging.info(f"tissue_counts: {tissue_counts}")
-    
+
     for tissue_, tissue_data in tissue_dict.items():
         if args.batch_column is None:
             batch_dict = {args.batch_name: tissue_data}
@@ -217,17 +241,23 @@ def main():
                 tissue_data, category=args.batch_column
             )
             logging.info(f"tissue {tissue_} batch_counts: {batch_counts}")
-        Path(args.save_path.joinpath(f"{tissue_}")).mkdir(parents=True, exist_ok=True)
-        batch_pp_dict = {}
+
+        batch_pp_list = []
         for batch_, batch_data in batch_dict.items():
             batch_pp = preprocess_batch(batch_data, args)
-            logging.info(f"batch {batch_} batch_pp.shape = {batch_pp.shape}")
-            batch_pp_dict[batch_] = batch_pp
-            save_path = args.save_path.joinpath(
-                f"{tissue_}", f"{tissue_}_batch_{batch_}_pp.h5ad"
-            )
-            batch_pp.write(save_path)
-            logging.info(f"Preprocessed data saved to {save_path}")
+            logging.info(f"batch_{batch_}_pp.shape = {batch_pp.shape}")
+            batch_pp_list.append(batch_pp)
+        tissue_pp = ad.concat(batch_pp_list, merge="same")
+        logging.info(f"tissue_pp.shape = {tissue_pp.shape}")
+        new_anndata = ad.AnnData(X=tissue_pp.X)
+        new_anndata.obs = tissue_pp.obs[
+            ["batch", "pct_counts_mt", "cell_cycle_diff", "cellTypeName"]
+        ]
+        new_anndata.var = tissue_pp.var[["gene_id"]]
+        new_anndata.layers["counts"] = tissue_pp.layers["counts"]
+        save_path = args.save_path.joinpath(f"{tissue_}_pp.h5ad")
+        new_anndata.write(save_path)
+        logging.info(f"Preprocessed data saved to {save_path}")
 
 
 if __name__ == "__main__":
