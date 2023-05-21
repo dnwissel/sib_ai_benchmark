@@ -117,7 +117,7 @@ def main():
     else:
         raise ValueError("Please specify a valid batch correction method.")
 
-    Path(args.save_path.joinpath(f"{args.tissue}")).mkdir(parents=True, exist_ok=True)
+    Path(args.save_path.joinpath(f"{args.tissue}", f"{args.batch_correction_method}")).mkdir(parents=True, exist_ok=True)
     train_save_path = args.save_path.joinpath(
         f"{args.tissue}", f"{args.tissue}_train.h5ad"
     )
