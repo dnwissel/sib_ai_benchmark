@@ -38,7 +38,6 @@ class RegressOut(BatchCorrector):
                 keys_num.append(f"{key}_num")
                 keys_to_drop.append(f"{key}_num")
             else:
-                print(f"{key}: {data.obs[key].dtype}")
                 keys_num.append(key)
         print(f"keys_num: {keys_num}")
         sc.pp.regress_out(data, keys_num)
@@ -72,7 +71,7 @@ def main():
         "--read_path",
         type=lambda i: p.joinpath("data", i),
         default=p.joinpath("data", "asap", "haltere"),
-        help="Path to the folder of the preprocessed data of batches from one tissue",
+        help="Path to the folder of the preprocessed data.",
     )
     parser.add_argument(
         "--save_path",
@@ -92,7 +91,7 @@ def main():
         "--list",
         nargs="+",
         type=str,
-        default=["batch", "pct_counts_mt"],
+        default=["batch", "pct_counts_mt", "cell_cycle_diff"],
         help="The list of columns to regress on.",
     )
     parser.add_argument(
@@ -104,7 +103,7 @@ def main():
     )
     args = parser.parse_args()
 
-    files = [x for x in args.read_path.iterdir() if x.is_file()]
+    files = [x for x in args.read_path.iterdir() if Path(x).suffix=='.h5ad']
     data_list = [ad.read_h5ad(x) for x in files]
     file_names = [x.name for x in files]
     data_shape = [d.shape for d in data_list]
