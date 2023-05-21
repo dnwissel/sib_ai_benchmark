@@ -92,14 +92,14 @@ def main():
         "--list",
         nargs="+",
         type=str,
-        default=["batch", "experiment_id"],
+        default=["batch", "pct_counts_mt"],
         help="The list of columns to regress on.",
     )
     parser.add_argument(
         "--batch_correction_method",
         type=str,
-        # default="regress_out",
-        default="scanvi",
+        default="regress_out",
+        # default="scanvi",
         help="The batch correction method to use. \nIf not provided, will be set to 'scanvi'.",
     )
     args = parser.parse_args()
