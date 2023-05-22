@@ -88,11 +88,11 @@ def main():
         help="Column that indicates singlet/doublet in obs",
     )
     parser.add_argument(
-        "--singlet_value",
+        "--doublet",
         type=str,
-        default="0.0",  # ASAP
-        # default="Singlet",  # Bgee
-        help="Value in doublet column that indicates singlet",
+        default="1.0",  # ASAP
+        # default="Doublet",  # Bgee
+        help="The list of values that indicates singlets",
     )
     parser.add_argument(
         "--tissue_column",
@@ -181,7 +181,7 @@ def main():
 
     data = ad.read_h5ad(args.read_path)
     logging.info(f"data.shape: {data.shape}")
-    data = data[data.obs[args.doublet_column] == args.singlet_value]
+    data = data[~data.obs[args.doublet_column] == args.doublet]
     logging.info(f"Doublets removed data.shape: {data.shape}")
     sc.pp.filter_cells(data, min_genes=args.min_genes)
 
