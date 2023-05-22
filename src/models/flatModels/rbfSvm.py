@@ -12,7 +12,8 @@ params = dict(
         preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space = {
                 'C': np.arange(0.5, 40, 0.5),  # C: Penalty parameter in Soft margin SVM
-                'gamma': ['scale', 'auto'] + np.arange(0.1, 30, 0.5).tolist()
+                'gamma': ['scale', 'auto'] + np.arange(0.1, 30, 0.5).tolist(),
+                'class_weight':['balanced', None]
         }
 )
 

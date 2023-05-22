@@ -16,14 +16,14 @@ import json
 from models import flatModels
 # import models
 
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
 from statistics import mean
 
 # TODO: refactor to dataloader module
 # TODO: Randomized searchCV
 # TODO: outer metrics, rejection option , update res dict
 # TODO: documentation
-# TODO: dump predictions
+# TODO: dump Results to disk every three(interval) classifiers in case of training failure
 
 # create logger
 logger = Logger(name='App', log_to_file=True, log_to_console=False)
@@ -76,6 +76,7 @@ class App:
 
     def __nested_cv(self, X, y, KFold, inner_metrics, outer_metrics):
         num_feature, num_class = X.shape[1], y.nunique()
+        true_labels_test = []
         res = {}
         for classifier in self.classifiers:
             # Set dim_in/out for neuralNet
@@ -97,42 +98,56 @@ class App:
 
             if self.tuning_mode.lower() == 'sample':
                 param_grid = self.__sample_tuning_space(param_grid)
-
-            # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation
-            grid_search = GridSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics, refit=True, n_jobs=-1)
-            cv_results = cross_validate(grid_search, X, y, cv=KFold, scoring=outer_metrics, return_estimator=True, n_jobs=-1) # considering preprocessing steps
-
-            best_params = [gs.best_params_ for gs in cv_results["estimator"]]
-            best_params_unique = [str(dict(y)) for y in set(tuple(x.items()) for x in best_params)]
-
+            
             logger.write(f'{classifier.name}:', msg_type='subtitle')
-            logger.write(
-                f'Best hyperparameters ({len(best_params_unique)}/{len(best_params)}): {", ".join(best_params_unique)}',
-                msg_type='content'
-            )
-            temp = {}
-            for score_name in outer_metrics:
-                scores = cv_results[f'test_{score_name}']
-                mean_score = np.mean(scores) 
-                median_score = np.median(scores)
-                temp[score_name] = {'mean': mean_score, 'median': median_score, 'full': scores.tolist()}
+            best_params = []
+            model_result = {}
+            n_splits =KFold.n_splits
+            # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation
+            for fold_idx, (train_idx, test_idx) in enumerate(KFold.split(X, y)):
+                X_train, X_test = X[train_idx], X[test_idx]
+                y_train, y_test = y[train_idx], y[test_idx]
 
-                logger.write(
-                    f'{score_name.upper()}: Best Mean Score: {mean_score:.4f}  Best Median Score: {median_score:.4f}',
-                    msg_type='content'
-                )
-            res[classifier.name] = temp
-             
-            logger.write(
-            '',
-            msg_type='content'
-        )
+                if len(true_labels_test) < n_splits:
+                    true_labels_test.append(y_test.tolist())
+                
+                grid_search = GridSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics, refit=True, n_jobs=-1)
+                # cv_results = cross_validate(grid_search, X, y, cv=KFold, scoring=outer_metrics, return_estimator=True, n_jobs=-1) # considering preprocessing steps
+                grid_search.fit(X_train, y_train)
+
+                if fold_idx == n_splits - 1:
+                    best_params.append(grid_search.best_params_)
+                    best_params_unique = [str(dict(y)) for y in set(tuple(x.items()) for x in best_params)]
+                    logger.write(
+                        f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}',
+                        msg_type='content'
+                    )
+
+                y_test_predict = grid_search.predict(X_test)
+                model_result.setdefault('predicts', []).append(y_test_predict.tolist()) 
+                for metric_name, metric in outer_metrics.items():
+                    score = metric(y_test_predict, y_test)
+                    model_result.setdefault(f'{metric_name}', {}).setdefault('full', []).append(score)
+
+                    if fold_idx == n_splits - 1:
+                        scores = model_result[metric_name]['full']
+                        mean_score = np.mean(scores) 
+                        median_score = np.median(scores)
+                        model_result[metric_name].update({'mean': mean_score, 'median': median_score})
+
+                        logger.write(
+                            f'{metric_name.upper()}: Best Mean Score: {mean_score:.4f}  Best Median Score: {median_score:.4f}',
+                            msg_type='content'
+                        )
+                        res[classifier.name] = model_result
+                
+            logger.write('', msg_type='content')
 
         logger.write(
             '~~~TASK COMPLETED~~~\n\n',
             msg_type='subtitle'
         )
-        return res
+        return res, true_labels_test
     
 
     def __dump_to_disk(self, results, file_name):
@@ -152,12 +167,10 @@ class App:
 
         stratifiedKFold = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
         
-        results = self.__nested_cv(X, y, stratifiedKFold, inner_metrics, outer_metrics)
+        results, true_labels_test = self.__nested_cv(X, y, stratifiedKFold, inner_metrics, outer_metrics)
 
-        info_dict = {}
-        info_dict['random_state'] = random_seed
-        info_dict['model_result'] = results
-        info_dict['description'] = description
+        info_dict = dict(random_state=random_seed, model_result=results, description=description, true_labels_test=true_labels_test)
+        
         self.__dump_to_disk(info_dict, task_name) # dump the predicts
             
         
@@ -174,10 +187,11 @@ if __name__ == "__main__":
     app = App(tuning_mode="sample")
     
     params = dict(
-        selected_models=['LinearSVM'], 
+        # selected_models=['LinearSVM'], 
         data_path=path_bgee, 
         inner_metrics='accuracy',
-        outer_metrics=['accuracy', 'f1_macro'],
+        outer_metrics={'accuracy': accuracy_score},
+        # outer_metrics={'accuracy': accuracy_score, 'f1_score': f1_score },
         task_name='testing_run'
     )
     app.run(**params)
