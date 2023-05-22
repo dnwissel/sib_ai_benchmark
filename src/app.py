@@ -1,5 +1,5 @@
-from sklearn.model_selection import StratifiedKFold,LeaveOneGroupOut
-from sklearn.model_selection import GridSearchCV, cross_val_score, cross_validate
+from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
 import random
 import anndata
@@ -96,8 +96,8 @@ class App:
                 if classifier.preprocessing_params:
                     param_grid.update(classifier.preprocessing_params)
 
-            if self.tuning_mode.lower() == 'sample':
-                param_grid = self.__sample_tuning_space(param_grid)
+            # if self.tuning_mode.lower() == 'sample':
+            #     param_grid = self.__sample_tuning_space(param_grid)
             
             logger.write(f'{classifier.name}:', msg_type='subtitle')
             best_params = []
@@ -110,11 +110,13 @@ class App:
 
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
-                
-                grid_search = GridSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics, refit=True, n_jobs=-1)
-                # cv_results = cross_validate(grid_search, X, y, cv=KFold, scoring=outer_metrics, return_estimator=True, n_jobs=-1) # considering preprocessing steps
+                if self.tuning_mode.lower() == 'sample':
+                    grid_search = RandomizedSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics,n_iter=10, refit=True, n_jobs=-1)
+                else:
+                    grid_search = GridSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics, refit=True, n_jobs=-1)
                 grid_search.fit(X_train, y_train)
-
+                
+                # Log results in the last fold
                 if fold_idx == n_splits - 1:
                     best_params.append(grid_search.best_params_)
                     best_params_unique = [str(dict(y)) for y in set(tuple(x.items()) for x in best_params)]
