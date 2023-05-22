@@ -24,7 +24,7 @@ def regress_out(data, keys):
             keys_to_drop.append(f"{key}_num")
         else:
             keys_num.append(key)
-    sc.pp.regress_out(data, keys_num)
+    sc.pp.regress_out(data, keys_num, n_jobs=30)
     data.obs.drop(columns=keys_to_drop, inplace=True)
     new_anndata = ad.AnnData(X=data.X)
     new_anndata.obs = data.obs[["cellTypeName"]]
@@ -86,7 +86,8 @@ def main():
         "--list",
         nargs="+",
         type=str,
-        default=["batch", "pct_counts_mt", "cell_cycle_diff"],
+        default=["pct_counts_mt", "cell_cycle_diff"],  # regress_out
+        # default=["batch", "pct_counts_mt", "cell_cycle_diff"],  # scANVI
         help="The list of columns to regress on.",
     )
     parser.add_argument(
@@ -99,7 +100,7 @@ def main():
     args = parser.parse_args()
     data = ad.read_h5ad(args.read_path)
     logging.info(f"Read in data {args.read_path}, data shape: {data.shape}")
-    # Outer CV split train/test sets
+    # Get outer CV split train/test indices from app
     train_batch = data.obs["batch"].unique()[:-1]
     test_batch = data.obs["batch"].unique()[-1]
     train_set = data[data.obs["batch"].isin(train_batch)]
