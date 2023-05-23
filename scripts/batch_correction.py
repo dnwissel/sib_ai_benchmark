@@ -34,10 +34,21 @@ def regress_out(data, keys):
 
 
 def scanvi_embed(data, keys):
-    scvi.model.SCVI.setup_anndata(data, layer="counts", batch_key=keys[0])
+    categorical_keys = []
+    continuous_keys = []
+    for key in keys:
+        if not is_numeric_dtype(data.obs[key]):
+            categorical_keys.append(key)
+        else:
+            continuous_keys.append(key)
+    scvi.model.SCVI.setup_anndata(
+        data, layer="counts",
+        categorical_covariate_keys=categorical_keys,
+        continuous_covariate_keys=continuous_keys,
+    )
     vae = scvi.model.SCVI(data)
     vae.train()
-    data.obsm["X_scVI"] = vae.get_latent_representation()
+    # data.obsm["X_scVI"] = vae.get_latent_representation()
     lvae = scvi.model.SCANVI.from_scvi_model(
         vae,
         adata=data,
@@ -47,7 +58,7 @@ def scanvi_embed(data, keys):
     lvae.train(max_epochs=20, n_samples_per_label=100)
     data.obsm["X_scANVI"] = lvae.get_latent_representation(data)
     logging.info(
-        f"Finished batch correction with scANVI, \n projected to {data.obsm['X_scANVI'].shape[1]} latent dimensions."
+        f"scANVI projected data to {data.obsm['X_scANVI'].shape} latent space dimensions."
     )
     new_anndata = ad.AnnData(X=data.obsm["X_scANVI"])
     new_anndata.obs = data.obs[["cellTypeName"]]
