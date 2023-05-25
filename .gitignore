@@ -375,8 +375,9 @@ rsconnect/
 renv/*
 .Rproj.user
 
-# Large data file
+# Data file
 data-raw/*
+results/.temp/
 
 # Log
 log
