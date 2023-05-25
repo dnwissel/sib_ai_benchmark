@@ -110,6 +110,7 @@ class App:
 
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
+                # user define search type : no search; 
                 if self.tuning_mode.lower() == 'sample':
                     grid_search = RandomizedSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics,n_iter=10, refit=True, n_jobs=-1)
                 else:
