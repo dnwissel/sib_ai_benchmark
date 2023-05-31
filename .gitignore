@@ -377,7 +377,7 @@ renv/*
 
 # Data file
 data-raw/*
-results/.temp/
+results/.temp
 
 # Log
 log

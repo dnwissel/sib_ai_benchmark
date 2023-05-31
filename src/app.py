@@ -85,8 +85,9 @@ class App:
             
             # Define pipeline and param_grid
             param_grid = {}
-            for key, value in classifier.tuning_space.items():
-                param_grid[classifier.name + '__' + key] = value
+            if classifier.tuning_space:
+                for key, value in classifier.tuning_space.items():
+                    param_grid[classifier.name + '__' + key] = value
 
             if not classifier.preprocessing_steps:
                 pipeline = Pipeline([(classifier.name, classifier.model)])
@@ -95,14 +96,13 @@ class App:
                 
                 if classifier.preprocessing_params:
                     param_grid.update(classifier.preprocessing_params)
-
-            # if self.tuning_mode.lower() == 'sample':
-            #     param_grid = self.__sample_tuning_space(param_grid)
             
             logger.write(f'{classifier.name}:', msg_type='subtitle')
             best_params = []
             model_result = {}
             n_splits =KFold.n_splits
+            params_search_required = True
+            pipeline_steps=[]
             # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation
             for fold_idx, (train_idx, test_idx) in enumerate(KFold.split(X, y)):
                 X_train, X_test = X[train_idx], X[test_idx]
@@ -110,23 +110,49 @@ class App:
 
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
-                # user define search type : no search; 
-                if self.tuning_mode.lower() == 'sample':
-                    grid_search = RandomizedSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics,n_iter=10, refit=True, n_jobs=-1)
-                else:
-                    grid_search = GridSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics, refit=True, n_jobs=-1)
-                grid_search.fit(X_train, y_train)
-                
-                # Log results in the last fold
-                if fold_idx == n_splits - 1:
-                    best_params.append(grid_search.best_params_)
-                    best_params_unique = [str(dict(y)) for y in set(tuple(x.items()) for x in best_params)]
-                    logger.write(
-                        f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}',
-                        msg_type='content'
-                    )
 
-                y_test_predict = grid_search.predict(X_test)
+                # Fine-tuned model 
+                if not param_grid:
+                    model_selected = pipeline
+                    params_search_required = False
+                # Tune Params
+                else:
+                    if self.tuning_mode.lower() == 'sample':
+                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics,n_iter=10, refit=True, n_jobs=-1)
+                    else:
+                        model_selected = GridSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics, refit=True, n_jobs=-1)
+                model_selected.fit(X_train, y_train)
+                
+                if params_search_required:
+                    best_params.append(model_selected.best_params_)
+                    if fold_idx == n_splits - 1:
+                        pipeline_steps = model_selected.best_estimator_.get_params()["steps"]
+                else:
+                    if fold_idx == n_splits - 1:
+                        # best_params = None
+                        if hasattr(model_selected, 'get_params'):
+                            pipeline_steps = model_selected.get_params()['steps']
+
+                
+                # for param, value in  model_selected.best_estimator_.get_params().items():
+                #     print(f"{param}: {value}")
+                # Log results in the last fold
+                if fold_idx == n_splits - 1: 
+                    if not params_search_required:
+                        logger.write(
+                            (f'Steps in pipline: {dict(pipeline_steps)}\n' # TODO: case: no pipeline 
+                            f'Best hyperparameters: Not available, parameters are defined by user.'), 
+                            msg_type='content'
+                        )
+                    else:
+                        best_params_unique = [str(dict(y)) for y in set(tuple(x.items()) for x in best_params)]
+                        logger.write(
+                            (f'Steps in pipline: {dict(pipeline_steps)}\n'
+                            f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}'),
+                            msg_type='content'
+                        )
+
+                y_test_predict = model_selected.predict(X_test)
                 model_result.setdefault('predicts', []).append(y_test_predict.tolist()) 
                 for metric_name, metric in outer_metrics.items():
                     score = metric(y_test_predict, y_test)
@@ -187,10 +213,10 @@ if __name__ == "__main__":
     path_bgee = data_dir + "/SRP200614.h5ad"
 
     # Run App
-    app = App(tuning_mode="sample")
+    app = App(tuning_mode="sample") 
     
     params = dict(
-        # selected_models=['LinearSVM'], 
+        # selected_models=['RBFSVM'], 
         data_path=path_bgee, 
         inner_metrics='accuracy',
         outer_metrics={'accuracy': accuracy_score},

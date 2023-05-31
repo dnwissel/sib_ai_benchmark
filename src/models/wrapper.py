@@ -1,9 +1,9 @@
 class Wrapper:
     
-    def __init__(self, model, name, tuning_space, preprocessing_steps=None, preprocessing_params=None, is_selected=True, data_shape_required=False): 
+    def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True, data_shape_required=False): 
         # TODO: Move sample to app.Define sampling rate
         # TODO: Add multiple pre-processing steps
-        # TODO: Method to change default value is_selected
+        # TODO: Method to change default value of is_selected
 
         self.__validate_input()
 

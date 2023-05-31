@@ -11,12 +11,13 @@ from skorch import NeuralNetClassifier
 
 #TODO: configure Hiddden layers
 class NeuralNet(nn.Module):
-    def __init__(self, dim_in, dim_out, num_units=1000, nonlin=nn.ReLU()):
+    def __init__(self, dim_in, dim_out, dropout_rate, num_units=1000, nonlin=nn.ReLU()):
         super().__init__()
 
-        self.dense0 = nn.Linear(dim_in, num_units)
         self.nonlin = nonlin
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(dropout_rate)
+
+        self.dense0 = nn.Linear(dim_in, num_units)
         self.dense1 = nn.Linear(num_units, num_units)
         self.output = nn.Linear(num_units, dim_out)
 
@@ -42,7 +43,8 @@ params = dict(
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space={
                 'lr': np.arange(0.001, 0.01, 0.005).tolist(),
-                'batch_size': (16 * np.arange(1,8)).tolist()
+                'batch_size': (16 * np.arange(1,8)).tolist(),
+                'module__dropout_rate': [0.5]
         },
         data_shape_required=True    
 )
