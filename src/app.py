@@ -20,6 +20,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from statistics import mean
 
 # TODO: refactor to dataloader module
+# TODO: Enable pass dataset matrix  to app 
 # TODO: Randomized searchCV
 # TODO: outer metrics, rejection option , update res dict
 # TODO: documentation
@@ -61,10 +62,10 @@ class App:
     def __load_data(self, data_path):
         ann = anndata.read_h5ad(data_path)
 
-        X = ann.X
-        y = ann.obs['cellTypeId'].cat.codes
-        # X = ann.X[:100]
-        # y = ann.obs['cellTypeId'].cat.codes[:100]
+        # X = ann.X
+        # y = ann.obs['cellTypeId'].cat.codes
+        X = ann.X[:1000]
+        y = ann.obs['cellTypeId'][:1000].cat.codes
         if 'batch' in ann.obs.columns:
             groups = ann.obs['batch']
         # Datatype for torch tensors
@@ -172,10 +173,6 @@ class App:
                 
             logger.write('', msg_type='content')
 
-        logger.write(
-            '~~~TASK COMPLETED~~~\n\n',
-            msg_type='subtitle'
-        )
         return res, true_labels_test
     
 
@@ -189,18 +186,27 @@ class App:
             json.dump(results, file, indent=3, separators=(', ', ': '))
 
 
-    def run(self, data_path, inner_metrics, outer_metrics, selected_models='all', task_name = 'testing_run', random_seed=15, description=''):
+    def run(self, data_paths, inner_metrics, outer_metrics, dataset=None, selected_models='all', task_name = 'testing_run', random_seed=15, description=''):
         logger.write(f'Task {task_name.upper()} Started.', msg_type='title')
-        X, y = self.__load_data(data_path)        
         self.__load_models(selected_models)
 
-        stratifiedKFold = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
-        
-        results, true_labels_test = self.__nested_cv(X, y, stratifiedKFold, inner_metrics, outer_metrics)
+        info_dict = dict(random_state=random_seed, description=description)
+        for name, path in data_paths.items():
+            logger.write(f'Start benchmarking models on dataset {name.upper()}.', msg_type='subtitle')
 
-        info_dict = dict(random_state=random_seed, model_result=results, description=description, true_labels_test=true_labels_test)
-        
+            X, y = self.__load_data(path)        
+            stratifiedKFold = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
+            
+            results, true_labels_test = self.__nested_cv(X, y, stratifiedKFold, inner_metrics, outer_metrics)
+
+            info_dict.update({name: {'model_results': results, 'true_labels_test': true_labels_test}})
+            
         self.__dump_to_disk(info_dict, task_name) # dump the predicts
+
+        logger.write(
+            '~~~TASK COMPLETED~~~\n\n',
+            msg_type='subtitle'
+        )
             
         
             
@@ -216,8 +222,8 @@ if __name__ == "__main__":
     app = App(tuning_mode="sample") 
     
     params = dict(
-        # selected_models=['RBFSVM'], 
-        data_path=path_bgee, 
+        selected_models=['RBFSVM'], 
+        data_paths={'bgee': path_bgee, 'asap': path_asap},
         inner_metrics='accuracy',
         outer_metrics={'accuracy': accuracy_score},
         # outer_metrics={'accuracy': accuracy_score, 'f1_score': f1_score },
