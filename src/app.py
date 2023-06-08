@@ -119,7 +119,7 @@ class App:
                 # Tune Params
                 else:
                     if self.tuning_mode.lower() == 'sample':
-                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics,n_iter=10, refit=True, n_jobs=-1)
+                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics,n_iter=20, refit=True, n_jobs=-1)
                     else:
                         model_selected = GridSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics, refit=True, n_jobs=-1)
                 model_selected.fit(X_train, y_train)

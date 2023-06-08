@@ -12,7 +12,7 @@ from ..wrapper import Wrapper
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
-from scipy.stats import loguniform
+from scipy.stats import loguniform, uniform, randint
 
 #TODO: configure Hiddden layers
 num_hidden_layers = 5
@@ -27,29 +27,28 @@ kwargs = {}
 #     print(kwargs['dr_l0'])
 
 class NeuralNet(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin=nn.ReLU, num_hidden_layers=num_hidden_layers, **kwargs): # here is definition of the func
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_ratio=0.5, **kwargs): # here is definition of the func
         super().__init__()
 
         layers = []
-        
-
+        fixed_neuron_num = round(neuron_ratio * dim_in // 16)
         # Configure input layer
         layers.extend([
-            nn.Linear(dim_in, round(kwargs['neuron_l0'] * dim_in)), 
-            # F.dropout(), 
+            nn.Linear(dim_in, fixed_neuron_num), 
+            nn.Dropout(dor_input), 
             nonlin()
         ])
 
         # Configure hidden layers
         for i in range(num_hidden_layers):
             layers.extend([
-                nn.Linear(round(kwargs[f'neuron_l{i}']* dim_in), round(kwargs[f'neuron_l{i + 1}']* dim_in)), 
-                nn.Dropout(kwargs[f'dr_l{i}']), 
+                nn.Linear(fixed_neuron_num, fixed_neuron_num), 
+                nn.Dropout(dor_hidden), 
                 nonlin()
             ])
 
         # Configure output layer
-        layers.append(nn.Linear(round(kwargs[f'neuron_l{num_hidden_layers}'] * dim_in), dim_out))
+        layers.append(nn.Linear(fixed_neuron_num, dim_out))
 
 
         self.layers_seq = nn.Sequential(*layers)
@@ -66,7 +65,7 @@ device = (
     if torch.backends.mps.is_available()
     else "cpu"
 )
-print(device)
+# print(device)
 
 for i in range(num_hidden_layers):
     kwargs[f'module__dr_l{i}'] = loguniform(1e-2, 1e0)
@@ -77,11 +76,16 @@ tuning_space={
                 'lr': loguniform(1e-3, 1e2),
                 'batch_size': (16 * np.arange(1,8)).tolist(),
                 'optimizer': [optim.SGD, optim.Adam],
-                'optimizer__momentum': loguniform(1e-3, 1e0),
-                'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid]
+                # 'optimizer__momentum': loguniform(1e-3, 1e0),
+                'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
+                'module__num_hidden_layers': [3],
+                # 'module__dor_input': uniform(0, 0.3),
+                'module__dor_input': [0],
+                'module__dor_hidden': uniform(0, 1)
 }
 
-tuning_space.update(kwargs)
+# tuning_space.update(kwargs)
 
 params = dict(
         name='NeuralNet',
@@ -91,7 +95,7 @@ params = dict(
             criterion=nn.CrossEntropyLoss(),
             train_split=ValidSplit(5), # set later In case of intraDataset 
             verbose=0,
-            # callbacks=[EarlyStopping(patience=5)], # use external validation dataset from gridsearch?
+            callbacks=[EarlyStopping(patience=5)], # use external validation dataset from gridsearch?
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
