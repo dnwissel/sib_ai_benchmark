@@ -62,10 +62,10 @@ class App:
     def __load_data(self, data_path):
         ann = anndata.read_h5ad(data_path)
 
-        # X = ann.X
-        # y = ann.obs['cellTypeId'].cat.codes
-        X = ann.X[:1000]
-        y = ann.obs['cellTypeId'][:1000].cat.codes
+        X = ann.X
+        y = ann.obs['cellTypeId'].cat.codes
+        # X = ann.X[:100]
+        # y = ann.obs['cellTypeId'][:100].cat.codes
         if 'batch' in ann.obs.columns:
             groups = ann.obs['batch']
         # Datatype for torch tensors
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     app = App(tuning_mode="sample") 
     
     params = dict(
-        selected_models=['RBFSVM'], 
+        selected_models=['NeuralNet'], 
         data_paths={'bgee': path_bgee, 'asap': path_asap},
         inner_metrics='accuracy',
         outer_metrics={'accuracy': accuracy_score},
