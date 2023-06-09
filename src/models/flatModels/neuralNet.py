@@ -14,7 +14,7 @@ from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
-#TODO: configure Hiddden layers
+#TODO: set #neurons power of 2?
 num_hidden_layers = 5
 kwargs = {}
 
@@ -31,7 +31,7 @@ class NeuralNet(nn.Module):
         super().__init__()
 
         layers = []
-        fixed_neuron_num = round(neuron_ratio * dim_in - neuron_ratio * dim_in % 16)
+        fixed_neuron_num = round(neuron_ratio * dim_in) - round(neuron_ratio * dim_in) % 16
         # Configure input layer
         layers.extend([
             nn.Linear(dim_in, fixed_neuron_num), 
@@ -67,10 +67,10 @@ device = (
 )
 # print(device)
 
-for i in range(num_hidden_layers):
-    kwargs[f'module__dr_l{i}'] = loguniform(1e-2, 1e0)
-    kwargs[f'module__neuron_l{i}'] = [1, 2, 0.1, 0.01]
-kwargs[f'module__neuron_l{num_hidden_layers}'] = [1, 2, 0.1, 0.01]
+# for i in range(num_hidden_layers):
+#     kwargs[f'module__dr_l{i}'] = loguniform(1e-2, 1e0)
+#     kwargs[f'module__neuron_l{i}'] = [1, 2, 0.1, 0.01]
+# kwargs[f'module__neuron_l{num_hidden_layers}'] = [1, 2, 0.1, 0.01]
 
 tuning_space={
                 'lr': loguniform(1e-3, 1e0),
@@ -82,6 +82,7 @@ tuning_space={
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
                 'module__num_hidden_layers': [2, 4],
                 # 'module__dor_input': uniform(0, 0.3),
+                'module__neuron_ratio': [0.05, 0.1, 0.2],
                 'module__dor_input': [0],
                 'module__dor_hidden': uniform(0, 1)
 }
@@ -92,11 +93,11 @@ params = dict(
         name='NeuralNet',
         model=NeuralNetClassifier(
             module=NeuralNet,
-            max_epochs=25,
+            max_epochs=30,
             criterion=nn.CrossEntropyLoss(),
             train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
             verbose=0,
-            callbacks=[EarlyStopping(patience=5)], # use external validation dataset from gridsearch?
+            callbacks=[EarlyStopping(patience=3)], #TODO: use external validation dataset from gridsearch?
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
