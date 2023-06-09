@@ -27,15 +27,15 @@ kwargs = {}
 #     print(kwargs['dr_l0'])
 
 class NeuralNet(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_ratio=0.5, **kwargs): # here is definition of the func
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_ratio=0.1, **kwargs): # here is definition of the func
         super().__init__()
 
         layers = []
-        fixed_neuron_num = round(neuron_ratio * dim_in // 16)
+        fixed_neuron_num = round(neuron_ratio * dim_in - neuron_ratio * dim_in % 16)
         # Configure input layer
         layers.extend([
             nn.Linear(dim_in, fixed_neuron_num), 
-            nn.Dropout(dor_input), 
+            # nn.Dropout(dor_input), 
             nonlin()
         ])
 
@@ -73,13 +73,14 @@ for i in range(num_hidden_layers):
 kwargs[f'module__neuron_l{num_hidden_layers}'] = [1, 2, 0.1, 0.01]
 
 tuning_space={
-                'lr': loguniform(1e-3, 1e2),
+                'lr': loguniform(1e-3, 1e0),
                 'batch_size': (16 * np.arange(1,8)).tolist(),
-                'optimizer': [optim.SGD, optim.Adam],
+                # 'optimizer': [optim.SGD, optim.Adam],
+                'optimizer': [optim.Adam],
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
                 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
-                'module__num_hidden_layers': [3],
+                'module__num_hidden_layers': [2, 4],
                 # 'module__dor_input': uniform(0, 0.3),
                 'module__dor_input': [0],
                 'module__dor_hidden': uniform(0, 1)
@@ -93,7 +94,7 @@ params = dict(
             module=NeuralNet,
             max_epochs=25,
             criterion=nn.CrossEntropyLoss(),
-            train_split=ValidSplit(5), # set later In case of intraDataset 
+            train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
             verbose=0,
             callbacks=[EarlyStopping(patience=5)], # use external validation dataset from gridsearch?
             device=device
