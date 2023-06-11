@@ -14,56 +14,78 @@ logging.basicConfig(
 )
 
 
-def regress_out(data, keys):
+def regress_out(train, test, batch_key, covariate_keys):
+    keys = covariate_keys.copy()
+    keys.append(batch_key)
     keys_num = []
     keys_to_drop = []
     for key in keys:
-        if not is_numeric_dtype(data.obs[key]):
-            data.obs[f"{key}_num"] = pd.factorize(data.obs[key])[0]
+        if not is_numeric_dtype(train.obs[key]):
+            train.obs[f"{key}_num"] = pd.factorize(train.obs[key])[0]
             keys_num.append(f"{key}_num")
             keys_to_drop.append(f"{key}_num")
         else:
             keys_num.append(key)
-    sc.pp.regress_out(data, keys_num, n_jobs=30)
-    data.obs.drop(columns=keys_to_drop, inplace=True)
-    new_anndata = ad.AnnData(X=data.X)
-    new_anndata.obs = data.obs[["cellTypeName"]]
-    new_anndata.var = data.var[["gene_id"]]
+    sc.pp.regress_out(train, keys_num, n_jobs=30)  # access to the fitting model?
+    train.obs.drop(columns=keys_to_drop, inplace=True)
+    train_regress_out = ad.AnnData(X=train.X)
+    train_regress_out.obs = train.obs[["cellTypeName"]]
+    train_regress_out.var = train.var[["gene_id"]]
+    test_regress_out = test
+    return train_regress_out, test_regress_out
 
-    return new_anndata
 
-
-def scanvi_embed(data, keys):
+def scanvi_embedding(train, test, batch_key, covariate_keys):
     categorical_keys = []
     continuous_keys = []
-    for key in keys:
-        if not is_numeric_dtype(data.obs[key]):
+    for key in covariate_keys:
+        if not is_numeric_dtype(train.obs[key]):
             categorical_keys.append(key)
         else:
             continuous_keys.append(key)
     scvi.model.SCVI.setup_anndata(
-        data, layer="counts",
+        train,
+        layer="counts",
+        batch_key=batch_key,
         categorical_covariate_keys=categorical_keys,
         continuous_covariate_keys=continuous_keys,
     )
-    vae = scvi.model.SCVI(data)
-    vae.train()
-    # data.obsm["X_scVI"] = vae.get_latent_representation()
-    lvae = scvi.model.SCANVI.from_scvi_model(
-        vae,
-        adata=data,
-        labels_key="cellTypeName",
+    vae_ref = scvi.model.SCVI(train)
+    vae_ref.train()
+    train.obs["labels_scanvi"] = train.obs["cellTypeName"].values
+    vae_ref_scan = scvi.model.SCANVI.from_scvi_model(
+        vae_ref,
+        adata=train,
+        labels_key="labels_scanvi",
         unlabeled_category="Unknown",
     )
-    lvae.train(max_epochs=20, n_samples_per_label=100)
-    data.obsm["X_scANVI"] = lvae.get_latent_representation(data)
-    logging.info(
-        f"scANVI projected data to {data.obsm['X_scANVI'].shape} latent space dimensions."
+    # vae_ref_scan.view_anndata_setup(train)
+    vae_ref_scan.train(max_epochs=20, n_samples_per_label=100)
+    # model_path = f"{DATADIR}/lvae_models/"
+    # vae_ref_scan.save(model_path, overwrite=True)
+    # train.obsm["X_scANVI"] = vae_ref_scan.get_latent_representation(train)
+    # scvi.model.SCANVI.prepare_query_anndata(test, model_path)
+    scvi.model.SCANVI.prepare_query_anndata(test, vae_ref_scan)
+    vae_query = scvi.model.SCANVI.load_query_data(
+        test,
+        vae_ref_scan,
     )
-    new_anndata = ad.AnnData(X=data.obsm["X_scANVI"])
-    new_anndata.obs = data.obs[["cellTypeName"]]
-
-    return new_anndata, lvae
+    vae_query.train(
+        max_epochs=100,
+        plan_kwargs=dict(weight_decay=0.0),
+        check_val_every_n_epoch=10,
+    )
+    train.obsm["X_scANVI"] = vae_query.get_latent_representation(train)
+    test.obsm["X_scANVI"] = vae_query.get_latent_representation(test)
+    train_scanvi = ad.AnnData(X=train.obsm["X_scANVI"])
+    train.obs.loc[:, "scanvi_predict"] = vae_query.predict(
+        train
+    )  # access to prediction probability?
+    train_scanvi.obs = train.obs[["cellTypeName", "scanvi_predict"]]
+    test_scanvi = ad.AnnData(X=test.obsm["X_scANVI"])
+    test.obs.loc[:, "scanvi_predict"] = vae_query.predict(test)
+    test_scanvi.obs = test.obs[["cellTypeName", "scanvi_predict"]]
+    return train_scanvi, test_scanvi
 
 
 def main():
@@ -82,7 +104,7 @@ def main():
     parser.add_argument(
         "--save_path",
         type=lambda i: p.joinpath("data", i),
-        default=p.joinpath("data", "asap", "batch_corrected"),
+        default=p.joinpath("data", "asap"),
         help="Path to save the batch-corrected data",
     )
     parser.add_argument(
@@ -93,51 +115,63 @@ def main():
         help="The name of the tissue. \nIf not provided, will be set to 'unknown_tissue'.",
     )
     parser.add_argument(
-        "--keys",
+        "--batch_key",
+        type=str,
+        default="batch",
+        help="The column name of the batch covariate.",
+    )
+    parser.add_argument(
+        "--covariate_keys",
         "--list",
         nargs="+",
         type=str,
-        default=["pct_counts_mt", "cell_cycle_diff"],  # regress_out
-        # default=["batch", "pct_counts_mt", "cell_cycle_diff"],  # scANVI
-        help="The list of columns to regress on.",
+        default=["pct_counts_mt", "cell_cycle_diff"],
+        help="The list of column names of the covariates.",
     )
     parser.add_argument(
         "--batch_correction_method",
         type=str,
-        default="regress_out",
-        # default="scanvi",
+        # default="regress_out",
+        default="scanvi",
         help="The batch correction method to use.",
     )
     args = parser.parse_args()
     data = ad.read_h5ad(args.read_path)
-    logging.info(f"Read in data {args.read_path}, data shape: {data.shape}")
-    # Get outer CV split train/test indices from app
-    train_batch = data.obs["batch"].unique()[:-1]
-    test_batch = data.obs["batch"].unique()[-1]
-    train_set = data[data.obs["batch"].isin(train_batch)]
-    test_set = data[data.obs["batch"] == test_batch]
+    logging.info(f"Read in data from {args.read_path}, data.shape = {data.shape}")
     logging.info(f"Batch correction method: {args.batch_correction_method}")
+    batch_key = args.batch_key
+    covariate_keys = args.covariate_keys
+    batches = data.obs[args.batch_key].unique().to_list()
+    train_dict, test_dict = {}, {}
+    Path(
+        args.save_path.joinpath(f"{args.tissue}", f"{args.batch_correction_method}")
+    ).mkdir(parents=True, exist_ok=True)
 
-    if args.batch_correction_method == "regress_out":
-        train_bc = regress_out(train_set, args.keys)
-        test_bc = regress_out(test_set, args.keys)
-    elif args.batch_correction_method == "scanvi":
-        train_bc, lvae_model = scanvi_embed(train_set, args.keys)
-        test_em = lvae_model.get_latent_representation(test_set)
-        test_bc = ad.AnnData(X=test_em.obsm["X_scANVI"])
-        test_bc.obs = test_em.obs[["cellTypeName"]]
-    else:
-        raise ValueError("Please specify a valid batch correction method.")
+    for i in range(0, len(batches)):
+        test_set = data[data.obs["batch"] == batches[i]].copy()
+        train_set = data[
+            data.obs["batch"].isin([b for b in batches if b != batches[i]])
+        ].copy()
+        logging.info(
+            f"Leave out batch {i}, train_set.X.shape = {train_set.X.shape}, test_set.X.shape = {test_set.X.shape}"
+        )
+        if args.batch_correction_method == "regress_out":
+            train_dict[i], test_dict[i] = regress_out(
+                train_set, test_set, batch_key, covariate_keys
+            )
+        elif args.batch_correction_method == "scanvi":
+            train_dict[i], test_dict[i] = scanvi_embedding(
+                train_set, test_set, batch_key, covariate_keys
+            )
+        train_save_path = args.save_path.joinpath(
+            f"{args.tissue}", f"{args.batch_correction_method}", f"train_{i}.h5ad"
+        )
+        test_save_path = args.save_path.joinpath(
+            f"{args.tissue}", f"{args.batch_correction_method}", f"test_{i}.h5ad"
+        )
+        train_dict[i].write_h5ad(train_save_path)
+        test_dict[i].write_h5ad(test_save_path)
 
-    Path(args.save_path.joinpath(f"{args.tissue}", f"{args.batch_correction_method}")).mkdir(parents=True, exist_ok=True)
-    train_save_path = args.save_path.joinpath(
-        f"{args.tissue}", f"{args.tissue}_train.h5ad"
-    )
-    test_save_path = args.save_path.joinpath(
-        f"{args.tissue}", f"{args.tissue}_test.h5ad"
-    )
-    train_bc.write(train_save_path)
-    test_bc.write(test_save_path)
     logging.info(f"Train/test sets saved to {args.save_path}")
 
 
