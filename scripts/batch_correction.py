@@ -31,7 +31,9 @@ def regress_out(train, test, batch_key, covariate_keys):
     train_regress_out = ad.AnnData(X=train.X)
     train_regress_out.obs = train.obs[["cellTypeName"]]
     train_regress_out.var = train.var[["gene_id"]]
-    test_regress_out = test
+    test_regress_out = ad.AnnData(X=test.X)
+    test_regress_out.obs = test.obs[["cellTypeName"]]
+    test_regress_out.var = test.var[["gene_id"]]
     return train_regress_out, test_regress_out
 
 
