@@ -59,13 +59,13 @@ class App:
             f'{len(self.classifiers)} model(s) loaded: {", ".join(c.name for c in self.classifiers )}', msg_type='subtitle'
             )
 
-    def __load_data(self, data_path):
+    def __load_data(self, data_path=None):
         ann = anndata.read_h5ad(data_path)
 
-        X = ann.X
-        y = ann.obs['cellTypeId'].cat.codes
-        # X = ann.X[:100]
-        # y = ann.obs['cellTypeId'][:100].cat.codes
+        # X = ann.X
+        # y = ann.obs['cellTypeId'].cat.codes
+        X = ann.X[:100]
+        y = ann.obs['cellTypeId'][:100].cat.codes
         if 'batch' in ann.obs.columns:
             groups = ann.obs['batch']
         # Datatype for torch tensors
@@ -75,7 +75,7 @@ class App:
         return X, y
 
 
-    def __nested_cv(self, X, y, KFold, inner_metrics, outer_metrics):
+    def __train(self, X, y, cv, inner_metrics, outer_metrics):
         num_feature, num_class = X.shape[1], y.nunique()
         true_labels_test = []
         res = {}
@@ -101,11 +101,11 @@ class App:
             logger.write(f'{classifier.name}:', msg_type='subtitle')
             best_params = []
             model_result = {}
-            n_splits =KFold.n_splits
+            n_splits =cv.n_splits
             params_search_required = True
             pipeline_steps=[]
             # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation
-            for fold_idx, (train_idx, test_idx) in enumerate(KFold.split(X, y)):
+            for fold_idx, (train_idx, test_idx) in enumerate(cv.split(X, y)):
                 X_train, X_test = X[train_idx], X[test_idx]
                 y_train, y_test = y[train_idx], y[test_idx]
 
@@ -119,9 +119,9 @@ class App:
                 # Tune Params
                 else:
                     if self.tuning_mode.lower() == 'sample':
-                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics,n_iter=30, refit=True, n_jobs=-1)
+                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=cv, scoring=inner_metrics, n_iter=30, refit=True, n_jobs=-1)
                     else:
-                        model_selected = GridSearchCV(pipeline, param_grid, cv=KFold, scoring=inner_metrics, refit=True, n_jobs=-1)
+                        model_selected = GridSearchCV(pipeline, param_grid, cv=cv, scoring=inner_metrics, refit=True, n_jobs=-1)
                 model_selected.fit(X_train, y_train)
                 
                 if params_search_required:
@@ -176,7 +176,7 @@ class App:
         return res, true_labels_test
     
 
-    def __dump_to_disk(self, results, file_name):
+    def __save(self, results, file_name):
         current_file_dir = os.path.dirname(__file__)
         dir = os.path.join(current_file_dir, '../results/.temp')
         if not os.path.exists(dir):
@@ -186,22 +186,29 @@ class App:
             json.dump(results, file, indent=3, separators=(', ', ': '))
 
 
-    def run(self, data_paths, inner_metrics, outer_metrics, dataset=None, selected_models='all', task_name = 'testing_run', random_seed=15, description=''):
+    def run(self, inner_metrics, outer_metrics, data_paths=None, datasets=None, selected_models='all', task_name = 'testing_run', random_seed=15, description=''):
         logger.write(f'Task {task_name.upper()} Started.', msg_type='title')
         self.__load_models(selected_models)
 
         info_dict = dict(random_state=random_seed, description=description)
-        for name, path in data_paths.items():
+        # Loop over different datasets
+        # for name, path in data_paths.items():
+        for name, dataset in datasets.items():
             logger.write(f'Start benchmarking models on dataset {name.upper()}.', msg_type='subtitle')
+            # X, y = self.__load_data(path)  
+            X, y, groups = dataset  
+            # Loop over classifier  
+            # Tune hyperparams  
+            # Evaluate models
+            # Dump results
 
-            X, y = self.__load_data(path)        
             stratifiedKFold = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
             
-            results, true_labels_test = self.__nested_cv(X, y, stratifiedKFold, inner_metrics, outer_metrics)
+            results, true_labels_test = self.__train(X, y, stratifiedKFold, inner_metrics, outer_metrics)
 
             info_dict.update({name: {'model_results': results, 'true_labels_test': true_labels_test}})
             
-        self.__dump_to_disk(info_dict, task_name) # dump the predicts
+        self.__save(info_dict, task_name) # dump the predicts
 
         logger.write(
             '~~~TASK COMPLETED~~~\n\n',
@@ -218,12 +225,26 @@ if __name__ == "__main__":
     path_asap = data_dir + "/ASAP41_final.h5ad"
     path_bgee = data_dir + "/SRP200614.h5ad"
 
+    # Load data
+    ann = anndata.read_h5ad(path_bgee)
+    # X = ann.X
+    # y = ann.obs['cellTypeId'].cat.codes
+    X = ann.X[:100]
+    y = ann.obs['cellTypeId'][:100].cat.codes
+    groups = None
+    if 'batch' in ann.obs.columns:
+        groups = ann.obs['batch']
+    # Datatype for torch tensors
+    X, y = X.astype(np.float32), y.astype(np.int64)
+    bgee = (X, y, groups)
+
     # Run App
     app = App(tuning_mode="sample") 
     
     params = dict(
-        selected_models=['NeuralNet'], 
-        data_paths={'bgee': path_bgee, 'asap': path_asap},
+        selected_models=['LinearSVM'], 
+        # data_paths={'bgee': path_bgee, 'asap': path_asap},
+        datasets = {'bgee': bgee},
         inner_metrics='accuracy',
         outer_metrics={'accuracy': accuracy_score},
         # outer_metrics={'accuracy': accuracy_score, 'f1_score': f1_score },

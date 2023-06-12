@@ -15,8 +15,8 @@ from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
 #TODO: set #neurons power of 2?
-num_hidden_layers = 5
-kwargs = {}
+# num_hidden_layers = 5
+# kwargs = {}
 
 # for i in range(num_hidden_layers):
 #     kwargs[f'dr_l{i}'] = 0.5
@@ -97,7 +97,7 @@ params = dict(
             criterion=nn.CrossEntropyLoss(),
             train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
             verbose=0,
-            callbacks=[EarlyStopping(patience=3)], #TODO: use external validation dataset from gridsearch?
+            callbacks=[EarlyStopping(patience=3)], 
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
