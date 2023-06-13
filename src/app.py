@@ -197,15 +197,8 @@ class App:
             logger.write(f'Start benchmarking models on dataset {name.upper()}.', msg_type='subtitle')
             # X, y = self.__load_data(path)  
             X, y, groups = dataset  
-            # Loop over classifier  
-            # Tune hyperparams  
-            # Evaluate models
-            # Dump results
-
             stratifiedKFold = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
-            
             results, true_labels_test = self.__train(X, y, stratifiedKFold, inner_metrics, outer_metrics)
-
             info_dict.update({name: {'model_results': results, 'true_labels_test': true_labels_test}})
             
         self.__save(info_dict, task_name) # dump the predicts
@@ -242,7 +235,7 @@ if __name__ == "__main__":
     app = App(tuning_mode="sample") 
     
     params = dict(
-        selected_models=['LinearSVM'], 
+        selected_models=['LinearSVM', 'RBFSVM'], 
         # data_paths={'bgee': path_bgee, 'asap': path_asap},
         datasets = {'bgee': bgee},
         inner_metrics='accuracy',
