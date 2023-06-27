@@ -1,10 +1,13 @@
 from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.pipeline import Pipeline
 import random
 import anndata
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 import os
 import pkgutil
@@ -14,6 +17,7 @@ import logging
 import json
 
 from models import flatModels
+from metrics.calibration_error import calibration_error
 # import models
 
 from sklearn.metrics import accuracy_score, f1_score
@@ -108,6 +112,11 @@ class App:
             for fold_idx, (train_idx, test_idx) in enumerate(cv.split(X, y)):
                 X_train, X_test = X[train_idx], X[test_idx]
                 y_train, y_test = y[train_idx], y[test_idx]
+                
+                # Hold-out validation set for calibration
+                train_idx, val_idx_cal = next(cv.split(X_train, y_train))
+                X_train, X_val_cal = X_train[train_idx], X_train[val_idx_cal]
+                y_train, y_val_cal = y_train[train_idx], y_train[val_idx_cal]
 
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
@@ -153,8 +162,21 @@ class App:
                             msg_type='content'
                         )
 
-                y_test_predict = model_selected.predict(X_test)
+                # Caliberation
+                model_calibrated = CalibratedClassifierCV(model_selected.best_estimator_, cv='prefit', method="sigmoid", n_jobs=-1)
+                model_calibrated.fit(X_train, y_train)
+
+                y_test_predict = model_calibrated.predict(X_test)
+                y_test_predict_proba_all = model_calibrated.predict_proba(X_test)
+                y_test_predict_proba = []
+                for sample_idx, class_idx in enumerate(y_test_predict):
+                    y_test_predict_proba.append(y_test_predict_proba_all[sample_idx, class_idx])
+
+                # print(calibration_error(y_test, y_test_predict, y_test_predict_proba))
+
                 model_result.setdefault('predicts', []).append(y_test_predict.tolist()) 
+                model_result.setdefault('predicts_proba', []).append(y_test_predict_proba) 
+                # Calculate metrics
                 for metric_name, metric in outer_metrics.items():
                     score = metric(y_test_predict, y_test)
                     model_result.setdefault(f'{metric_name}', {}).setdefault('full', []).append(score)
@@ -170,7 +192,7 @@ class App:
                             msg_type='content'
                         )
                         res[classifier.name] = model_result
-                
+
             logger.write('', msg_type='content')
 
         return res, true_labels_test
@@ -235,7 +257,7 @@ if __name__ == "__main__":
     app = App(tuning_mode="sample") 
     
     params = dict(
-        selected_models=['LinearSVM', 'RBFSVM'], 
+        selected_models=['LinearSVM', 'NeuralNet'], 
         # data_paths={'bgee': path_bgee, 'asap': path_asap},
         datasets = {'bgee': bgee},
         inner_metrics='accuracy',
