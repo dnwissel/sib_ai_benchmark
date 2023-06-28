@@ -16,6 +16,9 @@ class Wrapper:
         self.data_shape_required = data_shape_required
         self.best_params = None
 
+    def predict_proba(self, model_fitted, X):
+        return model_fitted.predict_proba(X)
+
     def __validate_input(self,model=None):
         pass
 

@@ -18,6 +18,7 @@ import json
 
 from models import flatModels
 from metrics.calibration_error import calibration_error
+from scipy.special import softmax
 # import models
 
 from sklearn.metrics import accuracy_score, f1_score
@@ -161,21 +162,26 @@ class App:
                             f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}'),
                             msg_type='content'
                         )
-
+                y_test_predict = model_selected.predict(X_test)
+                # Uncaliberated confidence
+                y_test_proba_uncalib_all = classifier.predict_proba(model_selected.best_estimator_, X_test)
                 # Caliberation
-                model_calibrated = CalibratedClassifierCV(model_selected.best_estimator_, cv='prefit', method="sigmoid", n_jobs=-1)
-                model_calibrated.fit(X_train, y_train)
+                model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
+                model_calibrated.fit(X_val_cal, y_val_cal)
 
-                y_test_predict = model_calibrated.predict(X_test)
-                y_test_predict_proba_all = model_calibrated.predict_proba(X_test)
-                y_test_predict_proba = []
+                y_test_proba_calib_all = model_calibrated.predict_proba(X_test)
+                y_test_proba_calib = []
+                y_test_proba_uncalib = []
                 for sample_idx, class_idx in enumerate(y_test_predict):
-                    y_test_predict_proba.append(y_test_predict_proba_all[sample_idx, class_idx])
+                    y_test_proba_calib.append(y_test_proba_calib_all[sample_idx, class_idx])
+                    if y_test_proba_uncalib_all is not None:
+                        y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
 
-                # print(calibration_error(y_test, y_test_predict, y_test_predict_proba))
+                # print(calibration_error(y_test, y_test_predict, y_test_proba_calib))
 
                 model_result.setdefault('predicts', []).append(y_test_predict.tolist()) 
-                model_result.setdefault('predicts_proba', []).append(y_test_predict_proba) 
+                model_result.setdefault('predicts_proba_calib', []).append(y_test_proba_calib) 
+                model_result.setdefault('predicts_proba_uncalib', []).append(y_test_proba_uncalib) 
                 # Calculate metrics
                 for metric_name, metric in outer_metrics.items():
                     score = metric(y_test_predict, y_test)
@@ -244,8 +250,9 @@ if __name__ == "__main__":
     ann = anndata.read_h5ad(path_bgee)
     # X = ann.X
     # y = ann.obs['cellTypeId'].cat.codes
-    X = ann.X[:100]
-    y = ann.obs['cellTypeId'][:100].cat.codes
+    X = ann.X[:1000]
+    y = ann.obs['cellTypeId'][:1000].cat.codes
+    # print(y.nunique())
     groups = None
     if 'batch' in ann.obs.columns:
         groups = ann.obs['batch']
@@ -257,7 +264,7 @@ if __name__ == "__main__":
     app = App(tuning_mode="sample") 
     
     params = dict(
-        selected_models=['LinearSVM', 'NeuralNet'], 
+        selected_models=['LinearSVM'], 
         # data_paths={'bgee': path_bgee, 'asap': path_asap},
         datasets = {'bgee': bgee},
         inner_metrics='accuracy',
