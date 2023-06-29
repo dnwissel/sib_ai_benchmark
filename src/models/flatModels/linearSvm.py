@@ -15,7 +15,10 @@ class WrapperSVM(Wrapper):
         def predict_proba(self, model_fitted, X):
                 confidence = model_fitted.decision_function(X)
                 if confidence.ndim == 1 or confidence.shape[1] == 1:
-                        return None
+                        confidence = np.reshape(confidence, (-1, 1))
+                        confidence = np.concatenate((-1 * confidence, 1 * confidence), axis=1) # label 1 considered as positive, 
+                        # print(confidence)
+                        return softmax(confidence, axis=1)
                 return softmax(confidence, axis=1)
 
 # params = dict(
