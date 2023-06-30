@@ -162,29 +162,30 @@ class App:
                             f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}'),
                             msg_type='content'
                         )
-                y_test_predict = model_selected.predict(X_test)
+                y_test_predict_uncalib = model_selected.predict(X_test)
                 # Uncaliberated confidence
-                y_test_proba_uncalib_all = classifier.predict_proba(model_selected.best_estimator_, X_test)
+                y_test_proba_uncalib_all = classifier.predict_proba(model_selected, X_test)
                 # Caliberation
                 model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
                 model_calibrated.fit(X_val_cal, y_val_cal)
 
+                y_test_predict_calib = model_calibrated.predict(X_test)
                 y_test_proba_calib_all = model_calibrated.predict_proba(X_test)
                 y_test_proba_calib = []
                 y_test_proba_uncalib = []
-                for sample_idx, class_idx in enumerate(y_test_predict):
+                for sample_idx, class_idx in enumerate(y_test_predict_calib):
                     y_test_proba_calib.append(y_test_proba_calib_all[sample_idx, class_idx])
                     if y_test_proba_uncalib_all is not None:
                         y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
 
-                # print(calibration_error(y_test, y_test_predict, y_test_proba_calib))
+                # print(calibration_error(y_test, y_test_predict_calib, y_test_proba_calib))
 
-                model_result.setdefault('predicts', []).append(y_test_predict.tolist()) 
+                model_result.setdefault('predicts', []).append(y_test_predict_calib.tolist()) 
                 model_result.setdefault('predicts_proba_calib', []).append(y_test_proba_calib) 
                 model_result.setdefault('predicts_proba_uncalib', []).append(y_test_proba_uncalib) 
                 # Calculate metrics
                 for metric_name, metric in outer_metrics.items():
-                    score = metric(y_test_predict, y_test)
+                    score = metric(y_test_predict_calib, y_test)
                     model_result.setdefault(f'{metric_name}', {}).setdefault('full', []).append(score)
 
                     if fold_idx == n_splits - 1:
@@ -248,23 +249,23 @@ if __name__ == "__main__":
 
     # Load data
     ann = anndata.read_h5ad(path_bgee)
-    # X = ann.X
-    # y = ann.obs['cellTypeId'].cat.codes
-    X = ann.X[:100]
-    y = ann.obs['cellTypeId'][:100].cat.codes
+    X = ann.X
+    y = ann.obs['cellTypeId'].cat.codes
+    # X = ann.X[:100]
+    # y = ann.obs['cellTypeId'][:100].cat.codes
     # print(y.nunique())
     groups = None
     if 'batch' in ann.obs.columns:
         groups = ann.obs['batch']
     # Datatype for torch tensors
     X, y = X.astype(np.float32), y.astype(np.int64)
-    bgee = (X, y, groups)
+    bgee = (X.toarray(), y, groups)
 
     # Run App
     app = App(tuning_mode="sample") 
     
     params = dict(
-        selected_models=['LinearSVM'], 
+        selected_models=['NaiveBayes'], 
         # data_paths={'bgee': path_bgee, 'asap': path_asap},
         datasets = {'bgee': bgee},
         inner_metrics='accuracy',
