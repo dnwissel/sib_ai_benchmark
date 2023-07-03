@@ -19,6 +19,7 @@ import json
 from models import flatModels
 from metrics.calibration_error import calibration_error
 from scipy.special import softmax
+from calibration.calibrate_model import CalibratedClassifier
 # import models
 
 from sklearn.metrics import accuracy_score, f1_score
@@ -163,10 +164,13 @@ class App:
                             msg_type='content'
                         )
                 y_test_predict_uncalib = model_selected.predict(X_test)
+                classifier.set_modelFitted(model_selected)
                 # Uncaliberated confidence
-                y_test_proba_uncalib_all = classifier.predict_proba(model_selected, X_test)
+                y_test_proba_uncalib_all, _ = classifier.predict_proba(model_selected, X)
+
                 # Caliberation
-                model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
+                # model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
+                model_calibrated = CalibratedClassifier(classifier)
                 model_calibrated.fit(X_val_cal, y_val_cal)
 
                 y_test_predict_calib = model_calibrated.predict(X_test)
@@ -249,10 +253,10 @@ if __name__ == "__main__":
 
     # Load data
     ann = anndata.read_h5ad(path_bgee)
-    X = ann.X
-    y = ann.obs['cellTypeId'].cat.codes
-    # X = ann.X[:100]
-    # y = ann.obs['cellTypeId'][:100].cat.codes
+    # X = ann.X
+    # y = ann.obs['cellTypeId'].cat.codes
+    X = ann.X[:100]
+    y = ann.obs['cellTypeId'][:100].cat.codes
     # print(y.nunique())
     groups = None
     if 'batch' in ann.obs.columns:
@@ -265,7 +269,7 @@ if __name__ == "__main__":
     app = App(tuning_mode="sample") 
     
     params = dict(
-        selected_models=['NaiveBayes'], 
+        selected_models=['LinearSVM'], 
         # data_paths={'bgee': path_bgee, 'asap': path_asap},
         datasets = {'bgee': bgee},
         inner_metrics='accuracy',

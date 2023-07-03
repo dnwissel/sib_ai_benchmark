@@ -4,10 +4,12 @@ class Wrapper:
         # TODO: Move sample to app.Define sampling rate
         # TODO: Add multiple pre-processing steps
         # TODO: Method to change default value of is_selected
+        # TODO: rename predict_proba
 
         self.__validate_input()
 
         self.model = model
+        self.model_fitted = None
         self.name = name
         self.tuning_space = tuning_space
         self.preprocessing_steps = preprocessing_steps
@@ -18,6 +20,9 @@ class Wrapper:
 
     def predict_proba(self, model_fitted, X):
         return model_fitted.predict_proba(X)
+
+    def set_modelFitted(self, model_fitted):
+        self.model_fitted = model_fitted
 
     def __validate_input(self,model=None):
         pass
