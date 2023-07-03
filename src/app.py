@@ -255,8 +255,11 @@ if __name__ == "__main__":
     ann = anndata.read_h5ad(path_bgee)
     # X = ann.X
     # y = ann.obs['cellTypeId'].cat.codes
-    X = ann.X[:100]
-    y = ann.obs['cellTypeId'][:100].cat.codes
+    mask = ann.obs['cellTypeId'] != 'unannotated'
+    X = ann.X[mask][:100]
+    y = ann.obs[mask]['cellTypeId'].cat.codes[:100]
+    # X = ann.X[:100]
+    # y = ann.obs['cellTypeId'][:100].cat.codes
     # print(y.nunique())
     groups = None
     if 'batch' in ann.obs.columns:

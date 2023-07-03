@@ -8,7 +8,7 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
-
+# TODO: refactor
 class ModelWithTemperature(nn.Module):
     """
     A thin decorator, which wraps a model with temperature scaling
@@ -55,7 +55,7 @@ class ModelWithTemperature(nn.Module):
             #     logits_list.append(logits)
             #     labels_list.append(label)
             logits = torch.from_numpy(logits_list).to(device)
-            labels = torch.from_numpy(labels_list.to_numpy()).to(device)
+            labels = torch.from_numpy(labels_list).to(device)
 
         # Calculate NLL and ECE before temperature scaling
         before_temperature_nll = nll_criterion(logits, labels).item()

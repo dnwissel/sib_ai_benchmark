@@ -14,10 +14,10 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         self.temperature = None
         
 
-    def fit(self, X, y):
+    def fit(self, X, y): 
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
         ts = ModelWithTemperature()
-        self.temperature = ts.set_temperature(logits, y)
+        self.temperature = ts.set_temperature(logits, y.to_numpy())
         return self
 
     #TODO: argmax for PS
