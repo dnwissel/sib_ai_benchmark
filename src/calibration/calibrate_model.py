@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-from .temperature_scale import ModelWithTemperature, TemperatureScaling
+from .methods import TemperatureScaling, VectorScaling
 
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.calibration import CalibratedClassifierCV
@@ -38,26 +38,24 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
 
     def fit(self, X, y): 
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
-        # ts = ModelWithTemperature()
-        # self.temperature = ts.set_temperature(logits, y.to_numpy())
-        model = TemperatureScaling().to(device)
+        # model = TemperatureScaling().to(device)
+        model = VectorScaling(logits.shape[1]).to(device)
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=0.05)
         
-        # optimizer = optim.LBFGS([self.temperature], lr=0.01, max_iter=50)
         with torch.no_grad():
-            input = torch.from_numpy(logits).to(device)
+            input = torch.from_numpy(logits).to(torch.float).to(device)
             target = torch.from_numpy(y.to_numpy()).to(device)
         self.model = train_model(model, input, target, criterion, optimizer, 20)
         return self
 
-    #TODO: argmax for PS
+    #TODO: argmax for PS/vs
     def predict(self, X):
         return self.classifier.model_fitted.predict(X)
 
     def predict_proba(self, X):
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
         with torch.no_grad():
-            input = torch.from_numpy(logits).to(device)
-        return self.model(input).detach().numpy()
+            input = torch.from_numpy(logits).to(torch.float).to(device)
+        return self.model(input).detach().numpy().astype(np.float)
         # return softmax(logits/self.temperature, axis=1)
