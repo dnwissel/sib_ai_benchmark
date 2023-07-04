@@ -182,7 +182,7 @@ class App:
                     if y_test_proba_uncalib_all is not None:
                         y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
 
-                # print(calibration_error(y_test, y_test_predict_calib, y_test_proba_calib))
+                print(calibration_error(y_test, y_test_predict_calib, y_test_proba_calib))
 
                 model_result.setdefault('predicts', []).append(y_test_predict_calib.tolist()) 
                 model_result.setdefault('predicts_proba_calib', []).append(y_test_proba_calib) 
