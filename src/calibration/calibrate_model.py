@@ -38,8 +38,8 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
 
     def fit(self, X, y): 
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
-        # model = TemperatureScaling().to(device)
-        model = VectorScaling(logits.shape[1]).to(device)
+        model = TemperatureScaling().to(device)
+        # model = VectorScaling(logits.shape[1]).to(device)
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=0.05)
         
