@@ -8,19 +8,23 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
-# TODO: add vs
-
 class VectorScaling(nn.Module):
     def __init__(self, logits_len):
         super().__init__()
-        # self.W = nn.Parameter(torch.diag(torch.ones(1) * 1.5))
-        # self.b = nn.Parameter(torch.ones(1) * 1.5)
+        self.W = torch.diag(nn.Parameter(torch.ones(logits_len) * 1.5))
+        self.b = nn.Parameter(torch.zeros(logits_len) + 0.1)
+
+    def forward(self, logits):
+        logits = torch.matmul(logits, self.W) + self.b
+        return F.softmax(logits, dim=-1)
+
+class MatrixScaling(nn.Module):
+    def __init__(self, logits_len):
+        super().__init__()
         self.layer = nn.Linear(logits_len, logits_len)
 
     def forward(self, logits):
-        # logits = torch.tensordot(self.W, logits, dims=1) + self.b
         return F.softmax(self.layer(logits), dim=-1)
-
 
 
 class TemperatureScaling(nn.Module):

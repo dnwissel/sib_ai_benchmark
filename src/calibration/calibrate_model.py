@@ -55,7 +55,5 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
 
     def predict_proba(self, X):
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
-        with torch.no_grad():
-            input = torch.from_numpy(logits).to(torch.float).to(device)
+        input = torch.from_numpy(logits).to(torch.float).to(device)
         return self.model(input).detach().numpy().astype(np.float)
-        # return softmax(logits/self.temperature, axis=1)
