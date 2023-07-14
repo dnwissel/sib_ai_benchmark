@@ -160,7 +160,7 @@ def main():
     parser.add_argument(
         "--cell_cycle_genes_column",
         type=str,
-        default="gene_name",  # ASAP
+        default="gene_id",  # ASAP
         # default="gene_id",  # Bgee
         help="The column in var to look for cell cycle genes. \nIf not provided, will be set to 'gene_name'.",
     )
