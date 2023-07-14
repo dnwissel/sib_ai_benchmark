@@ -97,7 +97,7 @@ def main():
     parser.add_argument(
         "--tissue_column",
         type=str,
-        default="asap_tissue",  # ASAP
+        default="tissue",  # ASAP
         # default=None,  # Bgee
         help="Column name of tissues. \nIf not provided, will be set to None.",
     )
