@@ -181,8 +181,6 @@ def main():
 
     data = ad.read_h5ad(args.read_path)
     logging.info(f"data.shape: {data.shape}")
-    data = data[~data.obs[args.doublet_column] == args.doublet]
-    logging.info(f"Doublets removed data.shape: {data.shape}")
     sc.pp.filter_cells(data, min_genes=args.min_genes)
 
     # Keep genes that appear in more than min_cells cells in every batch
