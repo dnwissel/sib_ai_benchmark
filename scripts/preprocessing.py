@@ -184,7 +184,7 @@ def main():
     sc.pp.filter_cells(data, min_genes=args.min_genes)
 
     # Keep genes that appear in more than min_cells cells in every batch
-    batch_dict = {i: data[data.obs.batch == i] for i in data.obs.batch.unique()}
+    batch_dict = {i: data[data.obs.batch_id == i] for i in data.obs.batch_id.unique()}
     filtered_genes = []
     for _, v in batch_dict.items():
         l = sc.pp.filter_genes(v, min_cells=3, inplace=False)[0]
@@ -249,7 +249,7 @@ def main():
         logging.info(f"tissue_pp.shape = {tissue_pp.shape}")
         new_anndata = ad.AnnData(X=tissue_pp.X)
         new_anndata.obs = tissue_pp.obs[
-            ["batch", "pct_counts_mt", "cell_cycle_diff", "cellTypeName"]
+            ["batch_id", "pct_counts_mt", "cell_cycle_diff", "y"]
         ]
         new_anndata.var = tissue_pp.var[["gene_id"]]
         new_anndata.layers["counts"] = tissue_pp.layers["counts"]
