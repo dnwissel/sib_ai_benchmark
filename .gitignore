@@ -383,5 +383,6 @@ results/.temp
 log
 *.log
 
-
+.gitignore
+localPlay/*
 

@@ -15,17 +15,17 @@ from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
-
+from utilities.hier import Encoder, load_full_hier, get_lm, get_R
 
 class WrapperNN(Wrapper):
         def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
                 super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
 
         def init_model(self, X, train_y_label, test_y_label):
-            # num_feature, num_class = X.shape[1], train_y_label.nunique()
             print(X.shape[1], train_y_label.nunique())
             num_feature, num_class = X.shape[1], train_y_label.nunique()
             # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
+            # set ancestor matrix
             self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
 
             # Define pipeline and param_grid
@@ -41,7 +41,18 @@ class WrapperNN(Wrapper):
                 
                 if self.preprocessing_params:
                     param_grid.update(self.preprocessing_params)
-            return pipeline, param_grid, train_y_label, test_y_label
+            
+            # Set Loss params
+            # Ecode y
+            en = Encoder(self.g_global, self.roots_label)
+            y_train = en.fit_transform(train_y_label)
+            y_test = en.transform(test_y_label)
+
+            nodes = en.G_idx.nodes()
+            idx_to_eval = list(set(nodes) - set(en.roots_idx))
+            self.model.set_params(criterion__R=get_R(en), criterion__idx_to_eval=idx_to_eval) 
+            return pipeline, param_grid, y_train, y_test
+
 
         def predict_proba(self, model_fitted, X):
             proba = model_fitted.predict_proba(X)
@@ -51,7 +62,35 @@ class WrapperNN(Wrapper):
             return proba, net.forward(pl_0.transform(X))
 
 
-class NeuralNet(nn.Module):
+def get_constr_out(x, R):
+    """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
+    c_out = x.double()
+    c_out = c_out.unsqueeze(1)
+    c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
+    R_batch = R.expand(len(x),R.shape[1], R.shape[1])
+    final_out, _ = torch.max(R_batch*c_out.double(), dim = 2)
+    return final_out
+
+class MCLoss(nn.Module):
+    def __init__(self, R, idx_to_eval):
+        super().__init__()
+        self.R = R
+        self.idx_to_eval = idx_to_eval
+        self.criterion = nn.BCELoss()
+
+
+    def forward(self, output, target):
+        constr_output = get_constr_out(output, self.R)
+        train_output = target*output.double()
+        train_output = get_constr_out(train_output, self.R)
+        train_output = (1-target)*constr_output.double() + target*train_output
+
+        #MCLoss
+        loss = self.criterion(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
+        return loss
+
+
+class C_HMCNN(nn.Module):
     def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, **kwargs):
         super().__init__()
 
@@ -77,9 +116,14 @@ class NeuralNet(nn.Module):
         layers.append(nn.Linear(fixed_neuron_num, dim_out))
         self.layers_seq = nn.Sequential(*layers)
 
+    #TODO: Refine 
     def forward(self, X, **kwargs):
-        X = self.layers_seq(X)
-        return X
+        x = self.layers_seq(X)
+        if self.training:
+            constrained_out = x
+        else:
+            constrained_out = get_constr_out(x, self.R)
+        return constrained_out
 
 
 device = (
@@ -90,9 +134,10 @@ device = (
     else "cpu"
 )
 
+
 tuning_space={
                 'lr': loguniform(1e-3, 1e0),
-                'batch_size': (16 * np.arange(1,8)).tolist(),
+                'batch_size': (16 * np.arange(1,8)).tolist(), 
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
@@ -105,18 +150,20 @@ tuning_space={
                 'module__dor_hidden': uniform(0, 1)
 }
 
-params = dict(
-        name='NeuralNet',
-        model=NeuralNetClassifier(
-            module=NeuralNet,
+model=NeuralNetClassifier(
+            module=C_HMCNN,
             # max_epochs=30,
             max_epochs=3,
-            criterion=nn.CrossEntropyLoss(),
+            criterion=MCLoss,
             train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
             verbose=0,
             callbacks=[EarlyStopping(patience=3)], 
             device=device
-        ),
+        )
+
+params = dict(
+        name='C-HMCNN',
+        model=model,
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
         preprocessing_steps=[('StandardScaler', StandardScaler(with_mean=False))],
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},

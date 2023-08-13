@@ -14,13 +14,13 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
-
+# TODO : Dataloader
 def train_model(model, input, target, criterion, optimizer, epochs):
 
     for epoch in range(epochs):
         output = model(input)
         loss = criterion(output, target)
-        print(f"Epoch {epoch}, Loss: {loss.item()}")
+        # print(f"Epoch {epoch}, Loss: {loss.item()}")
 
         optimizer.zero_grad()
         loss.backward()
@@ -44,16 +44,21 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         optimizer = optim.Adam(model.parameters(), lr=0.05)
         
         with torch.no_grad():
-            input = torch.from_numpy(logits).to(torch.float).to(device)
-            target = torch.from_numpy(y.to_numpy()).to(device)
+            if torch.is_tensor(logits):
+                input = logits.to(device)
+            else:
+                input = torch.from_numpy(logits).to(torch.float).to(device)
+            target = torch.from_numpy(y).to(device)
         self.model = train_model(model, input, target, criterion, optimizer, 20)
         return self
 
-    #TODO: argmax for PS/vs
+    #TODO: argmax for PS/VS
     def predict(self, X):
         return self.classifier.model_fitted.predict(X)
 
     def predict_proba(self, X):
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
+        if torch.is_tensor(logits):
+            return self.model(logits).detach().numpy().astype(np.float)
         input = torch.from_numpy(logits).to(torch.float).to(device)
         return self.model(input).detach().numpy().astype(np.float)

@@ -9,8 +9,9 @@ import numpy as np
 from ..wrapper import Wrapper
 
 class WrapperSVM(Wrapper):
-        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True, data_shape_required=False): 
-                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected, data_shape_required)
+        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
+                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
+
 
         def predict_proba(self, model_fitted, X):
                 confidence = model_fitted.decision_function(X)
@@ -20,6 +21,7 @@ class WrapperSVM(Wrapper):
                         # print(confidence)
                         return softmax(confidence, axis=1)
                 return softmax(confidence, axis=1)
+
 
 params = dict(
         name='RBFSVM', 
