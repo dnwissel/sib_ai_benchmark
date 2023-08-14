@@ -9,57 +9,11 @@ from sklearn.pipeline import Pipeline
 
 import numpy as np
 
-from ..wrapper import Wrapper
+from models.wrapper import WrapperHier
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
-
-from utilities.hier import Encoder, load_full_hier, get_lm, get_R
-
-class WrapperNN(Wrapper):
-        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
-                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
-
-        def init_model(self, X, train_y_label, test_y_label):
-            print(X.shape[1], train_y_label.nunique())
-            num_feature, num_class = X.shape[1], train_y_label.nunique()
-            # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
-            # set ancestor matrix
-            self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
-
-            # Define pipeline and param_grid
-            param_grid = {}
-            if self.tuning_space:
-                for key, value in self.tuning_space.items():
-                    param_grid[self.name + '__' + key] = value
-
-            if not self.preprocessing_steps:
-                pipeline = Pipeline([(self.name, self.model)])
-            else:
-                pipeline = Pipeline(self.preprocessing_steps + [(self.name, self.model)])
-                
-                if self.preprocessing_params:
-                    param_grid.update(self.preprocessing_params)
-            
-            # Set Loss params
-            # Ecode y
-            en = Encoder(self.g_global, self.roots_label)
-            y_train = en.fit_transform(train_y_label)
-            y_test = en.transform(test_y_label)
-
-            nodes = en.G_idx.nodes()
-            idx_to_eval = list(set(nodes) - set(en.roots_idx))
-            self.model.set_params(criterion__R=get_R(en), criterion__idx_to_eval=idx_to_eval) 
-            return pipeline, param_grid, y_train, y_test
-
-
-        def predict_proba(self, model_fitted, X):
-            proba = model_fitted.predict_proba(X)
-            pl_0 = Pipeline(model_fitted.best_estimator_.steps[:-1])
-            net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
-            # return proba, F.softmax(net.forward(pl_0.transform(X)), dim=-1)
-            return proba, net.forward(pl_0.transform(X))
 
 
 def get_constr_out(x, R):
@@ -173,7 +127,7 @@ params = dict(
 
 
 # Please don't change this line
-wrapper = WrapperNN(**params)
+wrapper = WrapperHier(**params)
 
 
 if __name__ == "__main__":

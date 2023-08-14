@@ -6,7 +6,7 @@ from scipy.special import softmax
 
 import numpy as np
 
-from ..wrapper import Wrapper
+from models.wrapper import Wrapper
 
 params = dict(
         name='LogisticRegression',

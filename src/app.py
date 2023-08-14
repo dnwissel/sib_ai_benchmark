@@ -52,8 +52,8 @@ def main():
     datasets = dl.load_embedings(path_embedings)
 
     # Load models
-    flat_wrappers = dl.load_models('flat')
-    # flat_wrappers = dl.load_models('LogisticRegression')
+    # flat_wrappers = dl.load_models('flat')
+    flat_wrappers = dl.load_models('RBFSVM')
     global_wrappers = dl.load_models('global')
     for wrapper in global_wrappers:
         wrapper.set_gGlobal(*load_full_hier(path_hier))
@@ -61,7 +61,7 @@ def main():
 
     #=============== PCA ===============
     classifier_wrappers = flat_wrappers
-    print(classifier_wrappers)
+    # print(classifier_wrappers)
     # Set Pipeline
     n_dim = 30
     for clsw in classifier_wrappers:

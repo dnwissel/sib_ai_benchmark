@@ -18,6 +18,7 @@ from utilities.logger import Logger
 import logging
 import json
 
+from config import cfg
 from models import flatModels, globalModels
 from metrics.calibration_error import calibration_error
 from scipy.special import softmax
@@ -89,8 +90,7 @@ class Benchmark:
                 # Tune Params
                 else:
                     if self.tuning_mode.lower() == 'sample':
-                        # model_selected = RandomizedSearchCV(pipeline, param_grid, cv=cv, scoring=inner_metrics, n_iter=30, refit=True, n_jobs=-1)
-                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=cv, scoring=inner_metrics, n_iter=1, refit=True, n_jobs=-1) # For debug
+                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=cv, scoring=inner_metrics, n_iter=1 if cfg.debug else 30, refit=True, n_jobs=-1) # For debug
                     else:
                         model_selected = GridSearchCV(pipeline, param_grid, cv=cv, scoring=inner_metrics, refit=True, n_jobs=-1)
                 model_selected.fit(X_train, y_train)

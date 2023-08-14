@@ -1,5 +1,7 @@
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
+from utilities.hier import Encoder, get_lm, get_R
+from scipy.special import softmax
 
 
 
@@ -65,3 +67,103 @@ class Wrapper:
         pass
 
         #TODO: Validates fit and predict methods in model
+
+
+class WrapperSVM(Wrapper):
+        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
+                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
+
+        def predict_proba(self, model_fitted, X):
+                confidence = model_fitted.decision_function(X)
+                if confidence.ndim == 1 or confidence.shape[1] == 1:
+                        confidence = np.reshape(confidence, (-1, 1))
+                        confidence = np.concatenate((-1 * confidence, 1 * confidence), axis=1) # label 1 considered as positive, 
+                        # print(confidence)
+                        return softmax(confidence, axis=1), confidence
+                return softmax(confidence, axis=1), confidence
+        
+
+class WrapperNN(Wrapper):
+        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
+                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
+
+        def init_model(self, X, train_y_label, test_y_label):
+            # num_feature, num_class = X.shape[1], train_y_label.nunique()
+            print(X.shape[1], train_y_label.nunique())
+            num_feature, num_class = X.shape[1], train_y_label.nunique()
+            # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
+            self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
+
+            # Define pipeline and param_grid
+            param_grid = {}
+            if self.tuning_space:
+                for key, value in self.tuning_space.items():
+                    param_grid[self.name + '__' + key] = value
+
+            if not self.preprocessing_steps:
+                pipeline = Pipeline([(self.name, self.model)])
+            else:
+                pipeline = Pipeline(self.preprocessing_steps + [(self.name, self.model)])
+                
+                if self.preprocessing_params:
+                    param_grid.update(self.preprocessing_params)
+            
+            # Encode labels
+            le = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, dtype=int)
+            y_train = le.fit_transform(train_y_label.to_numpy().reshape(-1, 1)).flatten()
+            y_train, y_test = y_train, le.transform(test_y_label.to_numpy().reshape(-1, 1)).flatten()
+
+            return pipeline, param_grid, y_train, y_test
+
+        def predict_proba(self, model_fitted, X):
+            proba = model_fitted.predict_proba(X)
+            pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
+            net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
+            # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
+            return proba, net.forward(pl_pp.transform(X))
+
+
+
+class WrapperHier(Wrapper):
+        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
+                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
+
+        def init_model(self, X, train_y_label, test_y_label):
+            print(X.shape[1], train_y_label.nunique())
+            num_feature, num_class = X.shape[1], train_y_label.nunique()
+            # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
+            # set ancestor matrix
+            self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
+
+            # Define pipeline and param_grid
+            param_grid = {}
+            if self.tuning_space:
+                for key, value in self.tuning_space.items():
+                    param_grid[self.name + '__' + key] = value
+
+            if not self.preprocessing_steps:
+                pipeline = Pipeline([(self.name, self.model)])
+            else:
+                pipeline = Pipeline(self.preprocessing_steps + [(self.name, self.model)])
+                
+                if self.preprocessing_params:
+                    param_grid.update(self.preprocessing_params)
+            
+            # Set Loss params
+            # Ecode y
+            en = Encoder(self.g_global, self.roots_label)
+            y_train = en.fit_transform(train_y_label)
+            y_test = en.transform(test_y_label)
+
+            nodes = en.G_idx.nodes()
+            idx_to_eval = list(set(nodes) - set(en.roots_idx))
+            self.model.set_params(criterion__R=get_R(en), criterion__idx_to_eval=idx_to_eval) 
+            return pipeline, param_grid, y_train, y_test
+
+
+        def predict_proba(self, model_fitted, X):
+            proba = model_fitted.predict_proba(X)
+            pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
+            net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
+            # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
+            return proba, net.forward(pl_pp.transform(X))

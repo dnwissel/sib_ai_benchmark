@@ -2,24 +2,11 @@ from sklearn.svm import LinearSVC
 from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler
 from scipy.stats import loguniform
-from scipy.special import softmax
 
 import numpy as np
 
-from ..wrapper import Wrapper
+from models.wrapper import WrapperSVM
 
-class WrapperSVM(Wrapper):
-        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
-                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
-
-        def predict_proba(self, model_fitted, X):
-                confidence = model_fitted.decision_function(X)
-                if confidence.ndim == 1 or confidence.shape[1] == 1:
-                        confidence = np.reshape(confidence, (-1, 1))
-                        confidence = np.concatenate((-1 * confidence, 1 * confidence), axis=1) # label 1 considered as positive, 
-                        # print(confidence)
-                        return softmax(confidence, axis=1), confidence
-                return softmax(confidence, axis=1), confidence
 
 params = dict(
         name='LinearSVM',
