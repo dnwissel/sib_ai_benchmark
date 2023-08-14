@@ -3,6 +3,9 @@ import os
 import pkgutil
 import anndata
 import numpy as np
+import pandas as pd
+import networkx as nx
+
 from models import flatModels, globalModels
 
 
@@ -61,3 +64,17 @@ class Dataloader:
         #     f'{len(classifiers)} model(s) loaded: {", ".join(c.name for c in classifiers )}', msg_type='subtitle'
         #     )
         return classifiers
+
+    def load_full_hier(self, path):
+        hier = pd.read_csv(path, sep='\t')
+        hier = hier.replace(':', '-', regex=True)
+        edges = hier.to_records(index=False).tolist()
+        # print(f"#Edges:{len(edges)}")
+        G = nx.DiGraph(edges).reverse()
+        roots_label = [v for v, d in G.in_degree() if d == 0]
+        for node in roots_label:
+            G.add_edge('root', node)
+        roots_label.append('root')
+        # print(roots_label)
+        return G, roots_label
+

@@ -64,20 +64,6 @@ class Encoder:
         return Y
     
 
-def load_full_hier(path):
-    hier = pd.read_csv(path, sep='\t')
-    hier = hier.replace(':', '-', regex=True)
-    edges = hier.to_records(index=False).tolist()
-    # print(f"#Edges:{len(edges)}")
-    G = nx.DiGraph(edges).reverse()
-    roots_label = [v for v, d in G.in_degree() if d == 0]
-    for node in roots_label:
-        G.add_edge('root', node)
-    roots_label.append('root')
-    # print(roots_label)
-    return G, roots_label
-
-
 def get_R(en):
     # Compute matrix of ancestors R
     # Given n classes, R is an (n x n) matrix where R_ij = 1 if class i is descendant of class j

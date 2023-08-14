@@ -19,7 +19,6 @@ from utilities.logger import Logger
 import logging
 import json
 
-from utilities.hier import Encoder, load_full_hier, get_lm, get_R
 from utilities.dataLoader import Dataloader
 
 from models import flatModels, globalModels
@@ -52,14 +51,16 @@ def main():
     datasets = dl.load_embedings(path_embedings)
 
     # Load models
-    # flat_wrappers = dl.load_models('flat')
-    flat_wrappers = dl.load_models('RBFSVM')
+    flat_wrappers = dl.load_models('flat')
+    # flat_wrappers = dl.load_models('LogisticRegression')
     global_wrappers = dl.load_models('global')
     for wrapper in global_wrappers:
-        wrapper.set_gGlobal(*load_full_hier(path_hier))
+        wrapper.set_gGlobal(*dl.load_full_hier(path_hier))
 
-
+    #TODO: refactor to config
     #=============== PCA ===============
+    current_file_dir = os.path.dirname(__file__)
+    path = os.path.join(current_file_dir, '../results/.temp')
     classifier_wrappers = flat_wrappers
     # print(classifier_wrappers)
     # Set Pipeline
@@ -74,11 +75,14 @@ def main():
     
     params = dict(
         inner_metrics='accuracy',
+        # inner_metrics=partial(f1_score, average='macro'),
         outer_metrics={'accuracy': accuracy_score, 'balanced_accuracy_score': balanced_accuracy_score, 'f1_score_macro': partial(f1_score, average='macro'), 'f1_score_weighted': partial(f1_score, average='weighted')},
         task_name='testing_run'
     )
     bm.run(**params)
-
+    bm.save(path)
+    bm.plot()
+    
 
 if __name__ == "__main__":
    main()
