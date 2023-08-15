@@ -28,25 +28,18 @@ def regress_out(train, test, batch_key, covariate_keys):
             keys_num.append(key)
     
     sc.pp.regress_out(train, keys_num, n_jobs=48)
-    sc.tl.pca(train, n_comps=30)
-    # train.obs.drop(columns=keys_to_drop, inplace=True)
-    
+    sc.tl.pca(train, n_comps=30)    
     train_regress_out = ad.AnnData(X=train.obsm["X_pca"])
-    # train_regress_out.obs = train.obs[["cellTypeName"]]
     train_regress_out.obs = train.obs[["id", "batch_id", "y", "scanvi_predict"]]
-    # train_regress_out.var = train.var[["gene_id"]]
     
     sc.pp.regress_out(test, keys_num, n_jobs=48)
     sc.tl.pca(test, n_comps=30)
-    # test.obs.drop(columns=keys_to_drop, inplace=True)
     test_regress_out = ad.AnnData(X=test.obsm["X_pca"])
-
     test_regress_out.obs = test.obs[["id", "batch_id", "y", "scanvi_predict"]]
-    # test_regress_out.var = test.var[["gene_id"]]
 
     return train_regress_out, test_regress_out
 
-# TODO: update to align with the notebook
+
 def scanvi_embedding(train, test, batch_key, covariate_keys):
     categorical_keys = []
     continuous_keys = []
@@ -159,7 +152,7 @@ def main():
         args.save_path.joinpath(f"{args.tissue}", f"{args.batch_correction_method}")
     ).mkdir(parents=True, exist_ok=True)
 
-    # TODO: update to align with the notebook
+
     for i in range(0, len(batches)):
         test_set = data[data.obs["batch_id"] == batches[i]].copy()
         train_set = data[
