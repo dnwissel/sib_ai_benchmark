@@ -1,4 +1,4 @@
-from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut
+from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut, KFold
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.preprocessing import OrdinalEncoder
@@ -59,7 +59,6 @@ class Benchmark:
         true_labels_test = []
         res = {}
         for classifier in self.classifiers:
-            
             logger.write(f'{classifier.name}:', msg_type='subtitle')
             best_params = []
             model_result = {}
@@ -88,7 +87,9 @@ class Benchmark:
                 pipeline, param_grid, y_train, y_test = classifier.init_model(X_train, y_train, y_test)
 
                 # Hold-out validation set for calibration
-                train_idx, val_idx_cal = next(inner_cv.split(X_train, y_train))
+                print(y_train)
+                # train_idx, val_idx_cal = next(inner_cv.split(X_train, y_train)) # TODO: change
+                train_idx, val_idx_cal = next(inner_cv.split(X_train)) # TODO: change
                 X_train, X_val_cal = X_train[train_idx], X_train[val_idx_cal]
                 y_train, y_val_cal = y_train[train_idx], y_train[val_idx_cal]
 
@@ -204,8 +205,8 @@ class Benchmark:
             json.dump(self.results, file, indent=3, separators=(', ', ': '))
     
     
-    def plot(self, metric_name='f1_score_macro'):
-        plot(self.results, metric_name, self.task_name)
+    def plot(self, dir, metric_name='f1_score_macro'):
+        plot(self.results, metric_name, os.path.join(dir, self.task_name))
 
 
     def run(self, inner_metrics, outer_metrics, task_name = 'testing_run', random_seed=15, description='', is_pre_splits=True, is_outer_cv=False):
@@ -217,7 +218,8 @@ class Benchmark:
         # for name, path in data_paths.items():
         for name, dataset in self.datasets.items():
             logger.write(f'Start benchmarking models on dataset {name.upper()}.', msg_type='subtitle')
-            inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
+            # inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
+            inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
             outer_cv = LeaveOneGroupOut()
             if not is_pre_splits:
                 model_results, true_labels_test = self.__train(inner_cv, outer_cv, inner_metrics, outer_metrics, dataset=dataset)
@@ -232,8 +234,6 @@ class Benchmark:
             '~~~TASK COMPLETED~~~\n\n',
             msg_type='subtitle'
         )
-            
-        
             
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 import numpy as np
+import networkx as nx
 
 from models.wrapper import WrapperHier
 from skorch import NeuralNetClassifier
@@ -24,6 +25,7 @@ def get_constr_out(x, R):
     R_batch = R.expand(len(x),R.shape[1], R.shape[1])
     final_out, _ = torch.max(R_batch*c_out.double(), dim = 2)
     return final_out
+
 
 class MCLoss(nn.Module):
     def __init__(self, R, idx_to_eval):
@@ -45,8 +47,9 @@ class MCLoss(nn.Module):
 
 
 class C_HMCNN(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, **kwargs):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en):
         super().__init__()
+        self.en = en
 
         layers = []
         # fixed_neuron_num = round(neuron_power * dim_in) - round(neuron_power * dim_in) % 16
@@ -77,8 +80,36 @@ class C_HMCNN(nn.Module):
             constrained_out = x
         else:
             constrained_out = get_constr_out(x, self.R)
+            constrained_out = self.inference(constrained_out)
         return constrained_out
 
+
+    def inference(self, constrained_output):
+        constrained_output = constrained_output.to('cpu')
+        predicted = constrained_output.data > 0.5
+        y_pred = np.zeros(predicted.shape[0])
+        for row_idx, row in enumerate(predicted):
+            counts = row[self.en.label_idx].sum()
+            if counts < 2:
+                idx = np.argmax(constrained_output.data[row_idx, self.en.label_idx])
+                y_pred[row_idx] = self.en.label_idx[idx]
+            else:
+                labels = self.en.label_idx[row[self.en.label_idx].numpy().tolist()]
+                # if counts == 0:
+                #     labels = self.en.label_idx
+                mask = np.argsort(constrained_output.data[row_idx, labels]).numpy()
+                # print(mask)
+                labels_sorted = [labels[i] for i in mask]
+                preds = []
+                while len(labels_sorted) != 0:
+                    ancestors = nx.ancestors(self.en.G_idx, labels_sorted[0])
+                    path = [labels_sorted[0]]
+                    preds.append(labels_sorted[0])
+                    if ancestors is not None:
+                        path += list(ancestors)
+                    labels_sorted = [i for i in labels_sorted if i not in path]
+                idx = np.argmax(constrained_output.data[row_idx, preds])
+                y_pred[row_idx] = preds[idx]
 
 device = (
     "cuda"

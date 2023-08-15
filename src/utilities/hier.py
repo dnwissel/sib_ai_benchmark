@@ -17,6 +17,7 @@ class Encoder:
         self.node_map = None
         self.roots_label = roots_label
 
+
     def fit_transform(self, y):
         # print(y.unique())
         ancestors = [nx.ancestors(self.G_full,n) for n in y.unique()]

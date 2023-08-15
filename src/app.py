@@ -56,12 +56,7 @@ def main():
         default=None,
         help="Model types: flat, all, global, or model name"
     )
-
     args = parser.parse_args()
-    # Data path
-    current_file_dir = os.path.dirname(__file__)
-    data_dir = os.path.join(os.path.dirname(current_file_dir), 'data-raw')
-    path_res = os.path.join(current_file_dir, '../results/.temp')
 
     # Load data
     dl = Dataloader()
@@ -71,9 +66,9 @@ def main():
     classifier_wrappers = dl.load_models(model_type)
 
     # classifier_wrappers = dl.load_models('LogisticRegression')
-    path =  exp_cfg['data_path']
-    dataloader =  exp_cfg['dataloader']
-    datasets =  dataloader(path)
+    path = exp_cfg['data_path']
+    dataloader = exp_cfg['dataloader']
+    datasets = dataloader(path)
 
     # Set Pipeline
     for clsw in classifier_wrappers:
@@ -92,8 +87,8 @@ def main():
         is_pre_splits=exp_cfg['is_pre_splits']
     )
     bm.run(**params)
-    bm.save(path_res) #TODO: refactor
-    bm.plot()
+    bm.save(cfg.path_res) #TODO: refactor
+    bm.plot(cfg.path_res)
     
 
 if __name__ == "__main__":

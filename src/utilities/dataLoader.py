@@ -86,7 +86,7 @@ class Dataloader:
 
     def load_full_hier(self, path):
         hier = pd.read_csv(path, sep='\t')
-        hier = hier.replace(':', '-', regex=True)
+        # hier = hier.replace(':', '-', regex=True)
         edges = hier.to_records(index=False).tolist()
         # print(f"#Edges:{len(edges)}")
         G = nx.DiGraph(edges).reverse()

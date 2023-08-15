@@ -86,7 +86,7 @@ def subplot(data, ax, info):
     #         size='x-small')
 
 
-def plot(results, metric_name, task_name,  ncols=2):
+def plot(results, metric_name, path, ncols=2):
     # Prepare data
     data = []
     info = {}
@@ -134,7 +134,7 @@ def plot(results, metric_name, task_name,  ncols=2):
     for ax in axs.flat:
         ax.label_outer()
     
-    plt.savefig(task_name)
+    plt.savefig(path)
     # plt.show()
 
 

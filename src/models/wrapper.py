@@ -154,6 +154,7 @@ class WrapperHier(Wrapper):
             
             # Set Loss params
             # Ecode y
+            dl = Dataloader()
             self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
             en = Encoder(self.g_global, self.roots_label)
             y_train = en.fit_transform(train_y_label)
@@ -161,7 +162,7 @@ class WrapperHier(Wrapper):
 
             nodes = en.G_idx.nodes()
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
-            self.model.set_params(criterion__R=get_R(en), criterion__idx_to_eval=idx_to_eval) 
+            self.model.set_params(module__en=en, criterion__R=get_R(en), criterion__idx_to_eval=idx_to_eval) 
             return pipeline, param_grid, y_train, y_test
 
 
