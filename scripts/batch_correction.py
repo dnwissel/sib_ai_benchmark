@@ -26,17 +26,27 @@ def regress_out(train, test, batch_key, covariate_keys):
             keys_to_drop.append(f"{key}_num")
         else:
             keys_num.append(key)
-    sc.pp.regress_out(train, keys_num, n_jobs=30)  # access to the fitting model?
-    train.obs.drop(columns=keys_to_drop, inplace=True)
-    train_regress_out = ad.AnnData(X=train.X)
-    train_regress_out.obs = train.obs[["cellTypeName"]]
-    train_regress_out.var = train.var[["gene_id"]]
-    test_regress_out = ad.AnnData(X=test.X)
-    test_regress_out.obs = test.obs[["cellTypeName"]]
-    test_regress_out.var = test.var[["gene_id"]]
+    
+    sc.pp.regress_out(train, keys_num, n_jobs=48)
+    sc.tl.pca(train, n_comps=30)
+    # train.obs.drop(columns=keys_to_drop, inplace=True)
+    
+    train_regress_out = ad.AnnData(X=train.obsm["X_pca"])
+    # train_regress_out.obs = train.obs[["cellTypeName"]]
+    train_regress_out.obs = train.obs[["id", "batch_id", "y", "scanvi_predict"]]
+    # train_regress_out.var = train.var[["gene_id"]]
+    
+    sc.pp.regress_out(test, keys_num, n_jobs=48)
+    sc.tl.pca(test, n_comps=30)
+    # test.obs.drop(columns=keys_to_drop, inplace=True)
+    test_regress_out = ad.AnnData(X=test.obsm["X_pca"])
+
+    test_regress_out.obs = test.obs[["id", "batch_id", "y", "scanvi_predict"]]
+    # test_regress_out.var = test.var[["gene_id"]]
+
     return train_regress_out, test_regress_out
 
-
+# TODO: update to align with the notebook
 def scanvi_embedding(train, test, batch_key, covariate_keys):
     categorical_keys = []
     continuous_keys = []
@@ -52,9 +62,9 @@ def scanvi_embedding(train, test, batch_key, covariate_keys):
         categorical_covariate_keys=categorical_keys,
         continuous_covariate_keys=continuous_keys,
     )
-    vae_ref = scvi.model.SCVI(train)
-    vae_ref.train()
-    train.obs["labels_scanvi"] = train.obs["cellTypeName"].values
+    vae_ref = scvi.model.SCVI(train, n_latent=30, n_layers=2)
+    vae_ref.train(100)
+    train.obs["labels_scanvi"] = train.obs["y"].values
     vae_ref_scan = scvi.model.SCANVI.from_scvi_model(
         vae_ref,
         adata=train,
@@ -62,7 +72,7 @@ def scanvi_embedding(train, test, batch_key, covariate_keys):
         unlabeled_category="Unknown",
     )
     # vae_ref_scan.view_anndata_setup(train)
-    vae_ref_scan.train(max_epochs=20, n_samples_per_label=100)
+    vae_ref_scan.train(max_epochs=25)
     # model_path = f"{DATADIR}/lvae_models/"
     # vae_ref_scan.save(model_path, overwrite=True)
     # train.obsm["X_scANVI"] = vae_ref_scan.get_latent_representation(train)
@@ -80,13 +90,11 @@ def scanvi_embedding(train, test, batch_key, covariate_keys):
     train.obsm["X_scANVI"] = vae_query.get_latent_representation(train)
     test.obsm["X_scANVI"] = vae_query.get_latent_representation(test)
     train_scanvi = ad.AnnData(X=train.obsm["X_scANVI"])
-    train.obs.loc[:, "scanvi_predict"] = vae_query.predict(
-        train
-    )  # access to prediction probability?
-    train_scanvi.obs = train.obs[["cellTypeName", "scanvi_predict"]]
+    train.obs.loc[:, "scanvi_predict"] = vae_query.predict(train) 
+    train_scanvi.obs = train.obs[["id", "batch_id", "y", "scanvi_predict"]]
     test_scanvi = ad.AnnData(X=test.obsm["X_scANVI"])
     test.obs.loc[:, "scanvi_predict"] = vae_query.predict(test)
-    test_scanvi.obs = test.obs[["cellTypeName", "scanvi_predict"]]
+    test_scanvi.obs = test.obs[["id", "batch_id", "y", "scanvi_predict"]]
     return train_scanvi, test_scanvi
 
 
@@ -100,26 +108,26 @@ def main():
     parser.add_argument(
         "--read_path",
         type=lambda i: p.joinpath("data", i),
-        default=p.joinpath("data", "asap", "preprocessed", "antenna_pp.h5ad"),
+        default=p.joinpath("data", "preprocessed", "wing_pp.h5ad"),
         help="Path to the folder of the preprocessed data.",
     )
     parser.add_argument(
         "--save_path",
         type=lambda i: p.joinpath("data", i),
-        default=p.joinpath("data", "asap"),
+        default=p.joinpath("data", "regress_out"),
         help="Path to save the batch-corrected data",
     )
     parser.add_argument(
         "--tissue",
         type=str,
         # default="unknown_tissue",
-        default="antenna",
+        default="wing",
         help="The name of the tissue. \nIf not provided, will be set to 'unknown_tissue'.",
     )
     parser.add_argument(
         "--batch_key",
         type=str,
-        default="batch",
+        default="batch_id",
         help="The column name of the batch covariate.",
     )
     parser.add_argument(
@@ -133,14 +141,16 @@ def main():
     parser.add_argument(
         "--batch_correction_method",
         type=str,
-        # default="regress_out",
-        default="scanvi",
+        default="regress_out",
+        # default="scanvi",
         help="The batch correction method to use.",
     )
     args = parser.parse_args()
     data = ad.read_h5ad(args.read_path)
     logging.info(f"Read in data from {args.read_path}, data.shape = {data.shape}")
     logging.info(f"Batch correction method: {args.batch_correction_method}")
+    
+    
     batch_key = args.batch_key
     covariate_keys = args.covariate_keys
     batches = data.obs[args.batch_key].unique().to_list()
@@ -149,10 +159,11 @@ def main():
         args.save_path.joinpath(f"{args.tissue}", f"{args.batch_correction_method}")
     ).mkdir(parents=True, exist_ok=True)
 
+    # TODO: update to align with the notebook
     for i in range(0, len(batches)):
-        test_set = data[data.obs["batch"] == batches[i]].copy()
+        test_set = data[data.obs["batch_id"] == batches[i]].copy()
         train_set = data[
-            data.obs["batch"].isin([b for b in batches if b != batches[i]])
+            data.obs["batch_id"].isin([b for b in batches if b != batches[i]])
         ].copy()
         logging.info(
             f"Leave out batch {i}, train_set.X.shape = {train_set.X.shape}, test_set.X.shape = {test_set.X.shape}"
