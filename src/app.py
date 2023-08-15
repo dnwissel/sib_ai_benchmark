@@ -31,12 +31,12 @@ from statistics import mean
 from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-# TODO: refactor to dataloader module
 # TODO: Enable pass dataset matrix  to app 
 # TODO: check if train and test have the sampe y.nunique()
 # TODO: outer metrics, rejection option , update res dict
 # TODO: documentation
 # TODO: dump Results to disk every three(interval) classifiers in case of training failure
+# TODO: pass list to model type
 
 
 def main():

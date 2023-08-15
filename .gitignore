@@ -386,3 +386,6 @@ log
 .gitignore
 localPlay/*
 
+*.png
+*.pdf
+
