@@ -1,3 +1,4 @@
+import argparse
 from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
@@ -20,6 +21,7 @@ import logging
 import json
 
 from utilities.dataLoader import Dataloader
+from config import cfg
 
 from models import flatModels, globalModels
 from metrics.calibration_error import calibration_error
@@ -38,49 +40,59 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-expn',
+        "--experiment_name",
+        type=str,
+        default='scanvi_bcm',
+        help="The dict key in cfg.experiments file"
+    )
+
+    parser.add_argument(
+        '-mt',
+        "--model_type",
+        type=str,
+        default=None,
+        help="Model types: flat, all, global, or model name"
+    )
+
+    args = parser.parse_args()
     # Data path
     current_file_dir = os.path.dirname(__file__)
     data_dir = os.path.join(os.path.dirname(current_file_dir), 'data-raw')
-    # path_union = data_dir + "/data_unionized.h5ad"
-    path_hier = data_dir + "/sib_cell_type_hierarchy.tsv"
-    path_embedings =  data_dir + '/processed'
+    path_res = os.path.join(current_file_dir, '../results/.temp')
 
     # Load data
     dl = Dataloader()
-    # datasets = load_raw_data(path_union)
-    datasets = dl.load_embedings(path_embedings)
+    exp_name = args.experiment_name 
+    exp_cfg = cfg.experiments[exp_name]
+    model_type = exp_cfg['model_type'] if args.model_type is None else args.model_type
+    classifier_wrappers = dl.load_models(model_type)
 
-    # Load models
-    flat_wrappers = dl.load_models('flat')
-    # flat_wrappers = dl.load_models('LogisticRegression')
-    global_wrappers = dl.load_models('global')
-    for wrapper in global_wrappers:
-        wrapper.set_gGlobal(*dl.load_full_hier(path_hier))
+    # classifier_wrappers = dl.load_models('LogisticRegression')
+    path =  exp_cfg['data_path']
+    dataloader =  exp_cfg['dataloader']
+    datasets =  dataloader(path)
 
-    #TODO: refactor to config
-    #=============== PCA ===============
-    current_file_dir = os.path.dirname(__file__)
-    path = os.path.join(current_file_dir, '../results/.temp')
-    classifier_wrappers = flat_wrappers
-    # print(classifier_wrappers)
     # Set Pipeline
-    n_dim = 30
     for clsw in classifier_wrappers:
-        preprocessing_steps=[('DimensionReduction', TruncatedSVD(n_components=n_dim)),('StandardScaler', StandardScaler())]
+        preprocessing_steps = exp_cfg['ppSteps']
         if clsw.name == 'NaiveBayes':
-            preprocessing_steps=[('DimensionReduction', TruncatedSVD(n_components=n_dim)),('StandardScaler', MinMaxScaler())]
+            preprocessing_steps[-1] = ('StandardScaler', MinMaxScaler())
         clsw.set_ppSteps(preprocessing_steps)
 
+    # Run benchmark
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
-    
     params = dict(
         inner_metrics='accuracy',
         # inner_metrics=partial(f1_score, average='macro'),
         outer_metrics={'accuracy': accuracy_score, 'balanced_accuracy_score': balanced_accuracy_score, 'f1_score_macro': partial(f1_score, average='macro'), 'f1_score_weighted': partial(f1_score, average='weighted')},
-        task_name='testing_run'
+        task_name=exp_name + '_' + model_type,
+        is_pre_splits=exp_cfg['is_pre_splits']
     )
     bm.run(**params)
-    bm.save(path)
+    bm.save(path_res) #TODO: refactor
     bm.plot()
     
 

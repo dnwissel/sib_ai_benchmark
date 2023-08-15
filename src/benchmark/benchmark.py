@@ -175,13 +175,14 @@ class Benchmark:
                 # Calculate metrics
                 for metric_name, metric in outer_metrics.items():
                     score = metric(y_test_predict, y_test)
-                    model_result.setdefault(f'{metric_name}', {}).setdefault('full', []).append(score)
+                    scores = model_result.setdefault('scores', {})
+                    scores.setdefault(f'{metric_name}', {}).setdefault('full', []).append(score)
 
                     if fold_idx == n_splits - 1:
-                        scores = model_result[metric_name]['full']
-                        mean_score = np.mean(scores) 
-                        median_score = np.median(scores)
-                        model_result[metric_name].update({'mean': mean_score, 'median': median_score})
+                        scores_ = scores[metric_name]['full']
+                        mean_score = np.mean(scores_) 
+                        median_score = np.median(scores_)
+                        scores[metric_name].update({'mean': mean_score, 'median': median_score})
 
                         logger.write(
                             f'{metric_name.upper()}: Best Mean Score: {mean_score:.4f}  Best Median Score: {median_score:.4f}',
@@ -203,11 +204,11 @@ class Benchmark:
             json.dump(self.results, file, indent=3, separators=(', ', ': '))
     
     
-    def plot(self):
-        plot(self.results, 'f1_score_macro', self.task_name)
+    def plot(self, metric_name='f1_score_macro'):
+        plot(self.results, metric_name, self.task_name)
 
 
-    def run(self, inner_metrics, outer_metrics, task_name = 'testing_run', random_seed=15, description='', is_pre_split=True, is_outer_cv=False):
+    def run(self, inner_metrics, outer_metrics, task_name = 'testing_run', random_seed=15, description='', is_pre_splits=True, is_outer_cv=False):
         self.task_name = task_name
         logger.write(f'Task {task_name.upper()} Started.', msg_type='title')
 
@@ -218,7 +219,7 @@ class Benchmark:
             logger.write(f'Start benchmarking models on dataset {name.upper()}.', msg_type='subtitle')
             inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
             outer_cv = LeaveOneGroupOut()
-            if not is_pre_split:
+            if not is_pre_splits:
                 model_results, true_labels_test = self.__train(inner_cv, outer_cv, inner_metrics, outer_metrics, dataset=dataset)
             else:
                 model_results, true_labels_test = self.__train(inner_cv, inner_metrics, outer_metrics, pre_splits=dataset)

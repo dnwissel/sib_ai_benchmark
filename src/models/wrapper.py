@@ -1,7 +1,10 @@
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
+from config import cfg
 from utilities.hier import Encoder, get_lm, get_R
 from scipy.special import softmax
+from utilities.dataLoader import Dataloader
+
 
 
 
@@ -129,7 +132,7 @@ class WrapperHier(Wrapper):
                 super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
 
         def init_model(self, X, train_y_label, test_y_label):
-            print(X.shape[1], train_y_label.nunique())
+            # print(X.shape[1], train_y_label.nunique())
             num_feature, num_class = X.shape[1], train_y_label.nunique()
             # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
             # set ancestor matrix
@@ -151,6 +154,7 @@ class WrapperHier(Wrapper):
             
             # Set Loss params
             # Ecode y
+            self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
             en = Encoder(self.g_global, self.roots_label)
             y_train = en.fit_transform(train_y_label)
             y_test = en.transform(test_y_label)

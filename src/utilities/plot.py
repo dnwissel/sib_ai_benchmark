@@ -55,7 +55,7 @@ def subplot(data, ax, info):
     # Set the axes ranges and axes labels
     ax.set_xlim(0.5, num_boxes + 0.5)
     top = 1.08
-    bottom = -0.05
+    bottom = 0.5
     ax.set_ylim(bottom, top)
     ax.set_xticklabels(info['labels'], rotation=45, fontsize=8)
 
@@ -86,7 +86,7 @@ def subplot(data, ax, info):
     #         size='x-small')
 
 
-def plot(results, metric_name, task_name):
+def plot(results, metric_name, task_name,  ncols=2):
     # Prepare data
     data = []
     info = {}
@@ -101,25 +101,34 @@ def plot(results, metric_name, task_name):
         res_tissue = results['datasets'][tn]['model_results']
         res_model =[]
         for mn in model_names:
-            res_model.append(res_tissue[mn][metric_name]['full'])
+            res_model.append(res_tissue[mn]['scores'][metric_name]['full'])
         data.append(res_model)
 
     # Plot
-    ncols = 2
     nrows = len(tissue_names) // ncols + 1
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(10, 12))
     fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
 
-    print(axs.shape)
+    # print(axs.shape)
     cnt = 0
     for row_idx in range(axs.shape[0]):
-        for col_idx in range(axs.shape[1]):
+
+        if len(axs.shape) > 1:
+            for col_idx in range(axs.shape[1]):
+                if cnt < len(tissue_names):
+                    info['tissue_name'] = tissue_names[cnt]
+                    subplot(data[cnt], axs[row_idx, col_idx], info)
+                else:
+                    axs[row_idx, col_idx].axis('off')
+                cnt += 1 
+        else:
             if cnt < len(tissue_names):
                 info['tissue_name'] = tissue_names[cnt]
-                subplot(data[cnt], axs[row_idx, col_idx], info)
+                subplot(data[cnt], axs[row_idx], info)
             else:
-                axs[row_idx, col_idx].axis('off')
+                axs[row_idx].axis('off')
             cnt += 1 
+
 
     # configure x/y labels
     for ax in axs.flat:

@@ -13,13 +13,15 @@ class Dataloader:
     def __init__(self) -> None:
         pass
 
-    def load_embedings(self, path):
+    def load_embeddings(self, path):
         splits_fn = {}
         for fn in os.listdir(path):
-            if '_train_' in fn or '_test_' in fn:
-                tissue_name = fn[:fn.index('_')] #TODO: debug index of _train
+            idx = fn.find('_train_')
+            if idx == -1:
+                idx = fn.find('_test_')
+            if idx != -1:
+                tissue_name = fn[:idx]
                 splits_fn.setdefault(tissue_name, []).append(fn)
-        # print(len(splits_fn))
 
         splits_data = {}
         for k, v in splits_fn.items():
@@ -29,6 +31,22 @@ class Dataloader:
                 ann_train = anndata.read_h5ad(path + '/' + v[i])
                 ann_test = anndata.read_h5ad(path + '/' + v[i + 1])
                 splits_data.setdefault(k, []).append([(ann_train.X, ann_train.obs['y']), (ann_test.X, ann_test.obs['y'])])
+        return splits_data
+
+
+    def load_tissue_raw(self, path):
+        splits_fn = {}
+        for fn in os.listdir(path):
+            idx = fn.find('_pp')
+            if idx != -1:
+                tissue_name = fn[:idx]
+                splits_fn.setdefault(tissue_name, []).append(fn)
+
+        splits_data = {}
+        for k, v in splits_fn.items():
+            assert len(v) == 1
+            data = anndata.read_h5ad(path + '/' + v[0])
+            splits_data[k] = data
         return splits_data
 
 
@@ -64,6 +82,7 @@ class Dataloader:
         #     f'{len(classifiers)} model(s) loaded: {", ".join(c.name for c in classifiers )}', msg_type='subtitle'
         #     )
         return classifiers
+
 
     def load_full_hier(self, path):
         hier = pd.read_csv(path, sep='\t')
