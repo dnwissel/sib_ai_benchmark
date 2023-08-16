@@ -18,15 +18,28 @@ else:
 def train_model(model, input, target, criterion, optimizer, epochs):
 
     for epoch in range(epochs):
+        optimizer.zero_grad()
         output = model(input)
         loss = criterion(output, target)
         # print(f"Epoch {epoch}, Loss: {loss.item()}")
-
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
     return model
     
+
+def train_model_lbfgs(model, input, target, criterion):
+    optimizer = optim.LBFGS(model.parameters(), lr=0.01, max_iter=100)
+
+    def closure():
+        optimizer.zero_grad()
+        output = model(input)
+        loss = criterion(output, target)
+        loss.backward()
+        return loss
+
+    optimizer.step(closure)
+    return model
+
 
 class CalibratedClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, classifier, method='TS'):
@@ -49,7 +62,9 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
             else:
                 input = torch.from_numpy(logits).to(torch.float).to(device)
             target = torch.from_numpy(y).to(device)
-        self.model = train_model(model, input, target, criterion, optimizer, 20)
+        # self.model = train_model(model, input, target, criterion, optimizer, 20)
+        self.model = train_model_lbfgs(model, input, target, criterion)
+        print(self.model.temperature)
         return self
 
     #TODO: argmax for PS/VS
