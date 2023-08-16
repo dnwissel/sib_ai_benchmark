@@ -16,6 +16,60 @@ from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
+class NeuralNetClassifierHier(NeuralNetClassifier):
+
+    def __init__(
+            self,
+            module,
+            *args,
+            criterion=torch.nn.NLLLoss,
+            train_split=ValidSplit(5, stratified=True),
+            classes=None,
+            **kwargs
+    ):
+        super(NeuralNetClassifierHier, self).__init__(
+            module,
+            *args,
+            criterion=criterion,
+            train_split=train_split,
+            **kwargs
+        )
+        # self.classes = classes
+    
+    def predict(self, X):
+        output = self.forward(X)
+        constrained_out = get_constr_out(output, self.module.R)
+        preds = self._inference(constrained_out)
+        return preds
+    
+
+    def _inference(self, constrained_output):
+        constrained_output = constrained_output.to('cpu')
+        predicted = constrained_output.data > 0.5
+        y_pred = np.zeros(predicted.shape[0])
+        for row_idx, row in enumerate(predicted):
+            counts = row[self.module.en.label_idx].sum()
+            if counts < 2:
+                idx = np.argmax(constrained_output.data[row_idx, self.module.en.label_idx])
+                y_pred[row_idx] = self.module.en.label_idx[idx]
+            else:
+                labels = self.module.en.label_idx[row[self.module.en.label_idx].numpy().tolist()]
+                # if counts == 0:
+                #     labels = self.module.en.label_idx
+                mask = np.argsort(constrained_output.data[row_idx, labels]).numpy()
+                # print(mask)
+                labels_sorted = [labels[i] for i in mask]
+                preds = []
+                while len(labels_sorted) != 0:
+                    ancestors = nx.ancestors(self.module.en.G_idx, labels_sorted[0])
+                    path = [labels_sorted[0]]
+                    preds.append(labels_sorted[0])
+                    if ancestors is not None:
+                        path += list(ancestors)
+                    labels_sorted = [i for i in labels_sorted if i not in path]
+                idx = np.argmax(constrained_output.data[row_idx, preds])
+                y_pred[row_idx] = preds[idx]
+        return y_pred
 
 def get_constr_out(x, R):
     """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
@@ -56,8 +110,10 @@ class MCLoss(nn.Module):
 class C_HMCNN(nn.Module):
     def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en, R):
         super().__init__()
-        self.en = en
-        self.R = R
+        # self.module.en = en
+        C_HMCNN.en = en
+        # self.R = R
+        C_HMCNN.R = R
 
         layers = []
         # fixed_neuron_num = round(neuron_power * dim_in) - round(neuron_power * dim_in) % 16
@@ -84,40 +140,14 @@ class C_HMCNN(nn.Module):
     #TODO: Refine 
     def forward(self, X, **kwargs):
         x = self.layers_seq(X)
-        if self.training:
-            return x
-        constrained_out = get_constr_out(x, self.R)
-        constrained_out = self._inference(constrained_out)
-        return constrained_out
+        # if self.training:
+        #     return x
+        # constrained_out = get_constr_out(x, self.R)
+        # constrained_out = self._inference(constrained_out)
+        # return constrained_out
+        return x
 
 
-    def _inference(self, constrained_output):
-        constrained_output = constrained_output.to('cpu')
-        predicted = constrained_output.data > 0.5
-        y_pred = np.zeros(predicted.shape[0])
-        for row_idx, row in enumerate(predicted):
-            counts = row[self.en.label_idx].sum()
-            if counts < 2:
-                idx = np.argmax(constrained_output.data[row_idx, self.en.label_idx])
-                y_pred[row_idx] = self.en.label_idx[idx]
-            else:
-                labels = self.en.label_idx[row[self.en.label_idx].numpy().tolist()]
-                # if counts == 0:
-                #     labels = self.en.label_idx
-                mask = np.argsort(constrained_output.data[row_idx, labels]).numpy()
-                # print(mask)
-                labels_sorted = [labels[i] for i in mask]
-                preds = []
-                while len(labels_sorted) != 0:
-                    ancestors = nx.ancestors(self.en.G_idx, labels_sorted[0])
-                    path = [labels_sorted[0]]
-                    preds.append(labels_sorted[0])
-                    if ancestors is not None:
-                        path += list(ancestors)
-                    labels_sorted = [i for i in labels_sorted if i not in path]
-                idx = np.argmax(constrained_output.data[row_idx, preds])
-                y_pred[row_idx] = preds[idx]
-        return y_pred
 
 device = (
     "cuda"
@@ -143,7 +173,7 @@ tuning_space={
                 'module__dor_hidden': uniform(0, 1)
 }
 
-model=NeuralNetClassifier(
+model=NeuralNetClassifierHier(
             module=C_HMCNN,
             # max_epochs=30,
             max_epochs=3,
@@ -151,7 +181,7 @@ model=NeuralNetClassifier(
             train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
             verbose=0,
             callbacks=[EarlyStopping(patience=3)], 
-            warm_start=False,
+            # warm_start=False,
             device=device
         )
 
