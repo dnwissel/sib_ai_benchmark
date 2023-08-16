@@ -22,20 +22,21 @@ def regress_out(train, test, batch_key, covariate_keys):
     for key in keys:
         if not is_numeric_dtype(train.obs[key]):
             train.obs[f"{key}_num"] = pd.factorize(train.obs[key])[0]
+            test.obs[f"{key}_num"] = pd.factorize(test.obs[key])[0]
             keys_num.append(f"{key}_num")
             keys_to_drop.append(f"{key}_num")
         else:
             keys_num.append(key)
     
-    sc.pp.regress_out(train, keys_num, n_jobs=48)
+    sc.pp.regress_out(train, keys_num, n_jobs=24)
     sc.tl.pca(train, n_comps=30)    
     train_regress_out = ad.AnnData(X=train.obsm["X_pca"])
-    train_regress_out.obs = train.obs[["id", "batch_id", "y", "scanvi_predict"]]
+    train_regress_out.obs = train.obs[["id", "batch_id", "y"]]
     
-    sc.pp.regress_out(test, keys_num, n_jobs=48)
+    sc.pp.regress_out(test, keys_num, n_jobs=24)
     sc.tl.pca(test, n_comps=30)
     test_regress_out = ad.AnnData(X=test.obsm["X_pca"])
-    test_regress_out.obs = test.obs[["id", "batch_id", "y", "scanvi_predict"]]
+    test_regress_out.obs = test.obs[["id", "batch_id", "y"]]
 
     return train_regress_out, test_regress_out
 
