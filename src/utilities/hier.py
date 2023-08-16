@@ -18,7 +18,7 @@ class Encoder:
         self.roots_label = roots_label
 
 
-    def fit_transform(self, y):
+    def fit(self, y):
         # print(y.unique())
         ancestors = [nx.ancestors(self.G_full,n) for n in y.unique()]
         ancestors = set(itertools.chain(*ancestors))
@@ -42,26 +42,37 @@ class Encoder:
         self.G_idx = nx.DiGraph(adjacency_matrix)
         self.roots_idx = [v for k, v in  self.node_map.items() if k in self.roots_label]
 
-        y= self._encode_y(y)
-        return y
+        # y= self._encode_y(y)
+        return self
 
     def transform(self, y):
         # print(y.unique())
         return self._encode_y(y)
 
     #TODO: novel label in test
-    def _encode_y(self, labels):
-        num_class = len(self.G_label.nodes())
+    def _encode_y(self, nodes, is_idx=True):
+        num_class = len(self.G_idx.nodes())
         Y = []
-        for label in labels:
+        for node in nodes:
             y_ = np.zeros(num_class)
-            if  self.node_map.get(label) is not None:
-                y_[[ self.node_map.get(a) for a in nx.ancestors(self.G_label, label)]] = 1
-                y_[ self.node_map[label]] = 1
-                Y.append(y_)
+            if  node in self.G_idx.nodes():
+                y_[[ a for a in nx.ancestors(self.G_idx, node)]] = 1
+                y_[node] = 1
+            else:
+                y_ = np.zeros(num_class) - 1
+
+            Y.append(y_)
+        self.label_idx = nodes
+
+        # for label in labels:
+        #     y_ = np.zeros(num_class)
+        #     if  self.node_map.get(label) is not None:
+        #         y_[[ self.node_map.get(a) for a in nx.ancestors(self.G_label, label)]] = 1
+        #         y_[ self.node_map[label]] = 1
+        #         Y.append(y_)
 
         Y = np.stack(Y)
-        self.label_idx = np.array(list(map( self.node_map.get, labels.unique())))
+        # self.label_idx = np.array(list(map( self.node_map.get, nodes.unique())))
         return Y
     
 

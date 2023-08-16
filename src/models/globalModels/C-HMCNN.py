@@ -36,6 +36,36 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
         )
         # self.classes = classes
     
+    def fit_loop(self, X, y=None, epochs=None, **fit_params): 
+        y = self.module.en.transform(y)   
+        self.check_data(X, y)
+        self.check_training_readiness()
+        epochs = epochs if epochs is not None else self.max_epochs
+
+        dataset_train, dataset_valid = self.get_split_datasets(
+            X, y, **fit_params)
+        on_epoch_kwargs = {
+            'dataset_train': dataset_train,
+            'dataset_valid': dataset_valid,
+        }
+        iterator_train = self.get_iterator(dataset_train, training=True)
+        iterator_valid = None
+        if dataset_valid is not None:
+            iterator_valid = self.get_iterator(dataset_valid, training=False)
+
+        for _ in range(epochs):
+            self.notify('on_epoch_begin', **on_epoch_kwargs)
+
+            self.run_single_epoch(iterator_train, training=True, prefix="train",
+                                  step_fn=self.train_step, **fit_params)
+
+            self.run_single_epoch(iterator_valid, training=False, prefix="valid",
+                                  step_fn=self.validation_step, **fit_params)
+
+            self.notify("on_epoch_end", **on_epoch_kwargs)
+        return self
+
+
     def predict(self, X):
         output = self.forward(X)
         constrained_out = get_constr_out(output, self.module.R)

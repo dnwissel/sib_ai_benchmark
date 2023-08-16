@@ -153,8 +153,13 @@ class WrapperHier(Wrapper):
             dl = Dataloader()
             self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
             en = Encoder(self.g_global, self.roots_label)
-            y_train = en.fit_transform(train_y_label)
-            y_test = en.transform(test_y_label)
+            # y_train = en.fit_transform(train_y_label)
+            # y_test = en.transform(test_y_label)
+
+            en = en.fit(train_y_label)
+            y_train = np.array(list(map(en.node_map.get, train_y_label)))
+            y_test = np.array(list(map(en.node_map.get, test_y_label)))
+            print(y_train)
 
             nodes = en.G_idx.nodes()
             R = get_R(en)
@@ -163,7 +168,7 @@ class WrapperHier(Wrapper):
                  module__en=en,
                  module__R=R,
                  module__dim_in=X.shape[1],
-                 module__dim_out=y_train.shape[1], 
+                 module__dim_out=len(en.G_idx.nodes()), 
                  criterion__R=R, 
                  criterion__idx_to_eval=idx_to_eval
             ) 
