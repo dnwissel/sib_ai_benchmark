@@ -19,6 +19,10 @@ from scipy.stats import loguniform, uniform, randint
 
 def get_constr_out(x, R):
     """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
+    # print(type(x))
+    if type(x) is np.ndarray:
+        print(x)
+    
     c_out = x.double()
     c_out = c_out.unsqueeze(1)
     c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
@@ -32,8 +36,8 @@ class MCLoss(nn.Module):
         super().__init__()
         self.R = R
         self.idx_to_eval = idx_to_eval
-        self.criterion = nn.BCELoss()
-
+        # self.criterion = nn.BCELoss()
+        self.criterion = nn.BCEWithLogitsLoss()
 
     def forward(self, output, target):
         constr_output = get_constr_out(output, self.R)
@@ -42,14 +46,18 @@ class MCLoss(nn.Module):
         train_output = (1-target)*constr_output.double() + target*train_output
 
         #MCLoss
+        # print(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
+        # mask = train_output < 0
+        # train_output[mask] = 0
         loss = self.criterion(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
         return loss
 
 
 class C_HMCNN(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en, R):
         super().__init__()
         self.en = en
+        self.R = R
 
         layers = []
         # fixed_neuron_num = round(neuron_power * dim_in) - round(neuron_power * dim_in) % 16
@@ -77,14 +85,13 @@ class C_HMCNN(nn.Module):
     def forward(self, X, **kwargs):
         x = self.layers_seq(X)
         if self.training:
-            constrained_out = x
-        else:
-            constrained_out = get_constr_out(x, self.R)
-            constrained_out = self.inference(constrained_out)
+            return x
+        constrained_out = get_constr_out(x, self.R)
+        constrained_out = self._inference(constrained_out)
         return constrained_out
 
 
-    def inference(self, constrained_output):
+    def _inference(self, constrained_output):
         constrained_output = constrained_output.to('cpu')
         predicted = constrained_output.data > 0.5
         y_pred = np.zeros(predicted.shape[0])
@@ -110,6 +117,7 @@ class C_HMCNN(nn.Module):
                     labels_sorted = [i for i in labels_sorted if i not in path]
                 idx = np.argmax(constrained_output.data[row_idx, preds])
                 y_pred[row_idx] = preds[idx]
+        return y_pred
 
 device = (
     "cuda"
@@ -143,6 +151,7 @@ model=NeuralNetClassifier(
             train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
             verbose=0,
             callbacks=[EarlyStopping(patience=3)], 
+            warm_start=False,
             device=device
         )
 

@@ -4,6 +4,7 @@ from config import cfg
 from utilities.hier import Encoder, get_lm, get_R
 from scipy.special import softmax
 from utilities.dataLoader import Dataloader
+import numpy as np
 
 
 
@@ -132,11 +133,6 @@ class WrapperHier(Wrapper):
                 super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
 
         def init_model(self, X, train_y_label, test_y_label):
-            # print(X.shape[1], train_y_label.nunique())
-            num_feature, num_class = X.shape[1], train_y_label.nunique()
-            # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
-            # set ancestor matrix
-            self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
 
             # Define pipeline and param_grid
             param_grid = {}
@@ -161,8 +157,18 @@ class WrapperHier(Wrapper):
             y_test = en.transform(test_y_label)
 
             nodes = en.G_idx.nodes()
+            R = get_R(en)
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
-            self.model.set_params(module__en=en, criterion__R=get_R(en), criterion__idx_to_eval=idx_to_eval) 
+            self.model.set_params(
+                 module__en=en,
+                 module__R=R,
+                 module__dim_in=X.shape[1],
+                 module__dim_out=y_train.shape[1], 
+                 criterion__R=R, 
+                 criterion__idx_to_eval=idx_to_eval
+            ) 
+
+            # y = y.astype(np.int64)
             return pipeline, param_grid, y_train, y_test
 
 
