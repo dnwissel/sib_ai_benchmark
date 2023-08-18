@@ -3,7 +3,7 @@ from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.preprocessing import OrdinalEncoder
-from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score
+from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
 
 import random
 import anndata
@@ -38,6 +38,9 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # TODO: dump Results to disk every three(interval) classifiers in case of training failure
 # TODO: pass list to model type
 
+def debug(y_t, y_p):
+    print(y_t, y_p)
+    return 1
 
 def main():
     parser = argparse.ArgumentParser()
@@ -81,6 +84,7 @@ def main():
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
     params = dict(
         inner_metrics='accuracy',
+        # inner_metrics=make_scorer(debug),
         # inner_metrics=partial(f1_score, average='macro'),
         outer_metrics={'accuracy': accuracy_score, 'balanced_accuracy_score': balanced_accuracy_score, 'f1_score_macro': partial(f1_score, average='macro'), 'f1_score_weighted': partial(f1_score, average='weighted')},
         task_name=exp_name + '_' + model_type,

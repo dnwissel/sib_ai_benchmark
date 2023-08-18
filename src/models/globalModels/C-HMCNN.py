@@ -37,7 +37,8 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
         # self.classes = classes
     
     def fit_loop(self, X, y=None, epochs=None, **fit_params): 
-        y = self.module.en.transform(y)   
+        y = self.module.en.transform(y)  
+
         self.check_data(X, y)
         self.check_training_readiness()
         epochs = epochs if epochs is not None else self.max_epochs
@@ -100,6 +101,7 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
                 idx = np.argmax(constrained_output.data[row_idx, preds])
                 y_pred[row_idx] = preds[idx]
         return y_pred
+
 
 def get_constr_out(x, R):
     """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
@@ -208,9 +210,10 @@ model=NeuralNetClassifierHier(
             # max_epochs=30,
             max_epochs=3,
             criterion=MCLoss,
-            train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
+            train_split=None,
+            # train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
             verbose=0,
-            callbacks=[EarlyStopping(patience=3)], 
+            # callbacks=[EarlyStopping(patience=3)], 
             # warm_start=False,
             device=device
         )

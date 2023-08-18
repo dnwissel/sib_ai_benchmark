@@ -87,8 +87,8 @@ class Benchmark:
                 pipeline, param_grid, y_train, y_test = classifier.init_model(X_train, y_train, y_test)
 
                 # Hold-out validation set for calibration
-                # train_idx, val_idx_cal = next(inner_cv.split(X_train, y_train)) # TODO: change
-                train_idx, val_idx_cal = next(inner_cv.split(X_train)) # TODO: change
+                train_idx, val_idx_cal = next(inner_cv.split(X_train, y_train)) # TODO: change
+                # train_idx, val_idx_cal = next(inner_cv.split(X_train)) # TODO: change
                 X_train, X_val_cal = X_train[train_idx], X_train[val_idx_cal]
                 y_train, y_val_cal = y_train[train_idx], y_train[val_idx_cal]
 
@@ -102,7 +102,7 @@ class Benchmark:
                 # Tune Params
                 else:
                     if self.tuning_mode.lower() == 'sample':
-                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, n_iter=1 if cfg.debug else 30, refit=True, n_jobs=-1) # For debug
+                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, n_iter=1 if cfg.debug else 30, refit=True, error_score='raise', n_jobs=-1) # For debug
                     else:
                         model_selected = GridSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, refit=True, n_jobs=-1)
                 model_selected.fit(X_train, y_train)
@@ -139,7 +139,8 @@ class Benchmark:
                 classifier.set_modelFitted(model_selected)
                 # Uncaliberated confidence
                 y_test_proba_uncalib_all, logits = classifier.predict_proba(model_selected, X_test)
-                y_test_proba_uncalib_all = y_test_proba_uncalib_all.astype(float)
+                if y_test_proba_uncalib_all is not None:
+                    y_test_proba_uncalib_all = y_test_proba_uncalib_all.astype(float) 
 
                 # Caliberation: skip Probabilistic model
                 y_test_proba_calib = []
@@ -161,6 +162,7 @@ class Benchmark:
                 else: #TODO reafactor to func
                     for sample_idx, class_idx in enumerate(y_test_predict_uncalib):
                         if y_test_proba_uncalib_all is not None:
+                            print([sample_idx, class_idx])
                             y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
                     # y_test_predict_calib = y_test_predict_calib.tolist()
                     print(calibration_error(y_test, y_test_predict_uncalib, y_test_proba_uncalib))
@@ -217,13 +219,13 @@ class Benchmark:
         # for name, path in data_paths.items():
         for name, dataset in self.datasets.items():
             logger.write(f'Start benchmarking models on dataset {name.upper()}.', msg_type='subtitle')
-            # inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
-            inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
+            inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
+            # inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
             outer_cv = LeaveOneGroupOut()
             if not is_pre_splits:
-                model_results, true_labels_test = self.__train(inner_cv, outer_cv, inner_metrics, outer_metrics, dataset=dataset)
+                model_results, true_labels_test = self.__train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
             else:
-                model_results, true_labels_test = self.__train(inner_cv, inner_metrics, outer_metrics, pre_splits=dataset)
+                model_results, true_labels_test = self.__train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv,pre_splits=dataset)
 
             self.results.setdefault('datasets', {}).update({name: {'model_results': model_results, 'true_labels_test': true_labels_test}})
             
