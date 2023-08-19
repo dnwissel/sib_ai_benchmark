@@ -16,7 +16,9 @@ raw_data_folder_id = {
 single_files_id = {
     "data_unionized.h5ad" : "1ovtRz8tjbVOXKTUc2K-iMzVtJm2RbRSL",
     "sib_cell_type_hierarchy.tsv" : "1dbjrQhJKfst_xe-VTDMO7Bae8re9plh8",
+    "results.json": "1F1xyRk8F6WG1tSoJLnqVPL8PLwoDyylO",
 }
+
 
 def download_embeddings(fn):
     id = embeddings_id[fn]
@@ -43,9 +45,15 @@ def download_single_file(fn):
     output = f"data-raw/{fn}"
     gdown.download(id=id, output=output, quiet=True)
     
+def download_results(fn):
+    id = single_files_id[fn]
+    output = f"results/{fn}"
+    gdown.download(id=id, output=output, quiet=True)
+
 
 # for f in ["_bcm", "_b", "_"]:
     # download_embeddings(f)
 
 # download_raw_data("raw_data_per_tissue")
 # download_single_file("sib_cell_type_hierarchy.tsv")
+# download_results("results.json")
