@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from utilities.dataLoader import Dataloader
+from utilities import dataLoader  as dl
 from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
@@ -19,11 +19,12 @@ path_res = os.path.join(parent_path, "results/")
 path_debug = os.path.join(parent_path, "data-raw/processed")
 
 n_dim = 30
-dl = Dataloader()
+
 
 experiments = {
     'pca_': {
-        'data_path': path_tissue_data,
+        # 'data_path': path_tissue_data,
+        'data_path': path_debug,
         'dataloader': dl.load_tissue_raw,
         'is_pre_splits': False,
         'model_type': 'flat',
@@ -32,7 +33,8 @@ experiments = {
     },
 
     'scanvi_bcm': {
-        'data_path': path_debug if debug else path_embeddings_bcm,
+        # 'data_path': path_embeddings_bcm,
+        'data_path': path_debug,
         'dataloader': dl.load_embeddings,
         'is_pre_splits': True,
         'model_type': 'flat',

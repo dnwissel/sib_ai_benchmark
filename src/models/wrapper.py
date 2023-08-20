@@ -3,7 +3,7 @@ from sklearn.preprocessing import OrdinalEncoder
 from config import cfg
 from utilities.hier import Encoder, get_lm, get_R
 from scipy.special import softmax
-from utilities.dataLoader import Dataloader
+from utilities import dataLoader  as dl
 import numpy as np
 
 
@@ -150,7 +150,7 @@ class WrapperHier(Wrapper):
             
             # Set Loss params
             # Ecode y
-            dl = Dataloader()
+            
             self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
             en = Encoder(self.g_global, self.roots_label)
             # y_train = en.fit_transform(train_y_label)
@@ -178,9 +178,8 @@ class WrapperHier(Wrapper):
 
 
         def predict_proba(self, model_fitted, X):
-            # proba = model_fitted.predict_proba(X)
-            # pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
-            # net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
-            # # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
-            # return proba, net.forward(pl_pp.transform(X))
-            return None, None
+            proba = model_fitted.predict_proba(X)
+            pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
+            net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
+            # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
+            return proba, net.forward(pl_pp.transform(X))

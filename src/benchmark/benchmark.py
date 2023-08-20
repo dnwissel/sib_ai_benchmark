@@ -55,8 +55,9 @@ class Benchmark:
             raise ValueError(f'Available modes are: {", ".join(tuning_mode_category)}')
 
 
-    def __train(self, inner_cv, inner_metrics, outer_metrics, outer_cv=None, dataset=None, pre_splits=None):
+    def _train(self, inner_cv, inner_metrics, outer_metrics, outer_cv=None, dataset=None, pre_splits=None):
         true_labels_test = []
+        test_row_ids = []
         res = {}
         for classifier in self.classifiers:
             logger.write(f'{classifier.name}:', msg_type='subtitle')
@@ -66,9 +67,9 @@ class Benchmark:
             pipeline_steps=[]
 
             if pre_splits is None:
-                X, y, groups = dataset
-                n_splits = outer_cv.get_n_splits(X, y, groups) #TODO: take care of cv method except LeaveOneGroupOut
-                splits = outer_cv.split(X, y, groups)
+                X, y, outer_groups, row_ids = dataset
+                n_splits = outer_cv.get_n_splits(X, y, outer_groups) #TODO: take care of cv method except LeaveOneGroupOut
+                splits = outer_cv.split(X, y, outer_groups)
             else:
                 n_splits = len(pre_splits)
                 splits = pre_splits
@@ -79,33 +80,47 @@ class Benchmark:
                 if pre_splits is None:
                     X_train, X_test = X[train], X[test]
                     y_train, y_test = y[train], y[test]
+                    inner_groups = outer_groups[train]
+                    row_ids_split = row_ids[test]
                 else:
                     X_train, X_test = train[0], test[0]
                     y_train, y_test = train[1], test[1]
+                    inner_groups = train[2]
+                    row_ids_split = test[3]
 
                 # Initialise model
                 pipeline, param_grid, y_train, y_test = classifier.init_model(X_train, y_train, y_test)
 
                 # Hold-out validation set for calibration
-                train_idx, val_idx_cal = next(inner_cv.split(X_train, y_train)) # TODO: change
-                # train_idx, val_idx_cal = next(inner_cv.split(X_train)) # TODO: change
+                cal_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=5) # TODO: Global seed
+                train_idx, val_idx_cal = next(cal_cv.split(X_train, y_train)) 
                 X_train, X_val_cal = X_train[train_idx], X_train[val_idx_cal]
                 y_train, y_val_cal = y_train[train_idx], y_train[val_idx_cal]
 
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
+                    test_row_ids.append(row_ids_split.tolist())
 
                 # Fine-tuned model 
                 if not param_grid:
                     model_selected = pipeline
                     params_search_required = False
+                    model_selected.fit(X_train, y_train)
                 # Tune Params
                 else:
                     if self.tuning_mode.lower() == 'sample':
-                        model_selected = RandomizedSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, n_iter=1 if cfg.debug else 30, refit=True, error_score='raise', n_jobs=-1) # For debug
+                        model_selected = RandomizedSearchCV(
+                            pipeline, 
+                            param_grid, 
+                            cv=inner_cv, 
+                            scoring=inner_metrics, 
+                            n_iter=1 if cfg.debug else 30, # jusify 30
+                            refit=True, 
+                            n_jobs=-1
+                        ) 
                     else:
                         model_selected = GridSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, refit=True, n_jobs=-1)
-                model_selected.fit(X_train, y_train)
+                    model_selected.fit(X_train, y_train, groups=inner_groups if isinstance(inner_cv, LeaveOneGroupOut) else None)
                 
                 if params_search_required:
                     best_params.append(model_selected.best_params_)
@@ -146,6 +161,7 @@ class Benchmark:
                 y_test_proba_calib = []
                 y_test_proba_uncalib = []
                 y_test_predict_calib = []
+                ece = []
                 if logits is not None:
                     # model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
                     model_calibrated = CalibratedClassifier(classifier)
@@ -158,19 +174,20 @@ class Benchmark:
                         if y_test_proba_uncalib_all is not None:
                             y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
                     y_test_predict_calib = y_test_predict_calib.tolist()
-                    print(calibration_error(y_test, y_test_predict_calib, y_test_proba_calib))
+                    ece = calibration_error(y_test, y_test_predict_calib, y_test_proba_calib)
                 else: #TODO reafactor to func
                     for sample_idx, class_idx in enumerate(y_test_predict_uncalib):
                         if y_test_proba_uncalib_all is not None:
-                            print([sample_idx, class_idx])
                             y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
                     # y_test_predict_calib = y_test_predict_calib.tolist()
-                    print(calibration_error(y_test, y_test_predict_uncalib, y_test_proba_uncalib))
+                    ece = calibration_error(y_test, y_test_predict_uncalib, y_test_proba_uncalib)
 
                 model_result.setdefault('predicts_calib', []).append(y_test_predict_calib) 
                 model_result.setdefault('predicts_uncalib', []).append(y_test_predict_uncalib.tolist()) 
                 model_result.setdefault('proba_calib', []).append(y_test_proba_calib) 
                 model_result.setdefault('proba_uncalib', []).append(y_test_proba_uncalib) 
+                model_result.setdefault('logits', []).append(logits) 
+                model_result.setdefault('ece', []).append(ece) 
 
                 y_test_predict = y_test_predict_uncalib 
 
@@ -195,7 +212,7 @@ class Benchmark:
             
             logger.write('', msg_type='content')
 
-        return res, true_labels_test
+        return res, true_labels_test, test_row_ids
     
 
     def save(self, dir):
@@ -217,17 +234,21 @@ class Benchmark:
         self.results = dict(random_state=random_seed, description=description)
         # Loop over different datasets
         # for name, path in data_paths.items():
-        for name, dataset in self.datasets.items():
-            logger.write(f'Start benchmarking models on dataset {name.upper()}.', msg_type='subtitle')
+        for dn, dataset in self.datasets.items():
+            logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
             inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
             # inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
             outer_cv = LeaveOneGroupOut()
             if not is_pre_splits:
-                model_results, true_labels_test = self.__train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
+                model_results, true_labels_test, test_row_ids = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
             else:
-                model_results, true_labels_test = self.__train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv,pre_splits=dataset)
+                model_results, true_labels_test, test_row_ids = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv,pre_splits=dataset)
 
-            self.results.setdefault('datasets', {}).update({name: {'model_results': model_results, 'true_labels_test': true_labels_test}})
+            self.results.setdefault('datasets', {}).update({dn: {
+                'model_results': model_results, 
+                'true_labels_test': true_labels_test,
+                'test_row_ids': test_row_ids
+            }})
             
         # self._save() # dump the predicts
 

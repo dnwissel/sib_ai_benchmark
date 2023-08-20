@@ -20,7 +20,7 @@ from utilities.logger import Logger
 import logging
 import json
 
-from utilities.dataLoader import Dataloader
+from utilities import dataLoader  as dl
 from config import cfg
 
 from models import flatModels, globalModels
@@ -38,14 +38,10 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # TODO: dump Results to disk every three(interval) classifiers in case of training failure
 # TODO: pass list to model type
 
-def debug(y_t, y_p):
-    print(y_t, y_p)
-    return 1
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-expn',
+        '-e',
         "--experiment_name",
         type=str,
         default='scanvi_bcm',
@@ -53,7 +49,7 @@ def main():
     )
 
     parser.add_argument(
-        '-mt',
+        '-m',
         "--model_type",
         type=str,
         default=None,
@@ -62,7 +58,7 @@ def main():
     args = parser.parse_args()
 
     # Load data
-    dl = Dataloader()
+    
     exp_name = args.experiment_name 
     exp_cfg = cfg.experiments[exp_name]
     model_type = exp_cfg['model_type'] if args.model_type is None else args.model_type
@@ -96,4 +92,5 @@ def main():
     
 
 if __name__ == "__main__":
-   main()
+    main()
+

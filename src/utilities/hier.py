@@ -13,14 +13,14 @@ class Encoder:
         self.G_full = G_full
 
         self.roots_idx = None
-        self.idx_label = None
+        self.label_idx = None # train labels in idx
         self.node_map = None
         self.roots_label = roots_label
 
 
     def fit(self, y):
         # print(y.unique())
-        ancestors = [nx.ancestors(self.G_full,n) for n in y.unique()]
+        ancestors = [nx.ancestors(self.G_full, n) for n in y.unique()]
         ancestors = set(itertools.chain(*ancestors))
         self.G_label = self.G_full.subgraph(ancestors | set(y.unique()))
         # self.G_full.remove_nodes_from([n for n in self.G_full if n not in (ancestors | set(y.unique()))])
@@ -42,6 +42,7 @@ class Encoder:
         self.G_idx = nx.DiGraph(adjacency_matrix)
         self.roots_idx = [v for k, v in  self.node_map.items() if k in self.roots_label]
 
+        self.label_idx = np.array(list(map(self.node_map.get, y)))
         # y= self._encode_y(y)
         return self
 
@@ -59,10 +60,10 @@ class Encoder:
                 y_[[ a for a in nx.ancestors(self.G_idx, node)]] = 1
                 y_[node] = 1
             else:
-                y_ = np.zeros(num_class) - 1
+                # y_ = np.zeros(num_class) - 1
+                y_ = np.zeros(num_class)
 
             Y.append(y_)
-        self.label_idx = nodes
 
         # for label in labels:
         #     y_ = np.zeros(num_class)
