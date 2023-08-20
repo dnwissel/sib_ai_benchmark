@@ -23,18 +23,16 @@ n_dim = 30
 
 experiments = {
     'pca_': {
-        # 'data_path': path_tissue_data,
-        'data_path': path_debug,
+        'data_path': path_tissue_data,
         'dataloader': dl.load_tissue_raw,
         'is_pre_splits': False,
         'model_type': 'flat',
         'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)),('StandardScaler', StandardScaler())],
         'ppParams': None,
     },
-
+    
     'scanvi_bcm': {
-        # 'data_path': path_embeddings_bcm,
-        'data_path': path_debug,
+        'data_path': path_embeddings_bcm,
         'dataloader': dl.load_embeddings,
         'is_pre_splits': True,
         'model_type': 'flat',

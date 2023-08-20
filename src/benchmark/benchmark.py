@@ -230,6 +230,12 @@ class Benchmark:
     def run(self, inner_metrics, outer_metrics, task_name = 'testing_run', random_seed=15, description='', is_pre_splits=True, is_outer_cv=False):
         self.task_name = task_name
         logger.write(f'Task {task_name.upper()} Started.', msg_type='title')
+        logger.write(
+            f'{len(self.classifiers)} model(s) loaded: {", ".join(c.name for c in self.classifiers )}', msg_type='subtitle'
+            )
+        logger.write(
+            f'{len(self.datasets)} dataset(s) loaded: {", ".join(list(self.datasets.keys()) )}', msg_type='subtitle'
+        )
 
         self.results = dict(random_state=random_seed, description=description)
         # Loop over different datasets
