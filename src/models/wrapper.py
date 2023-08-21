@@ -1,3 +1,4 @@
+from functools import partial
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from config import cfg
@@ -93,7 +94,6 @@ class WrapperNN(Wrapper):
 
         def init_model(self, X, train_y_label, test_y_label):
             # num_feature, num_class = X.shape[1], train_y_label.nunique()
-            print(X.shape[1], train_y_label.nunique())
             num_feature, num_class = X.shape[1], train_y_label.nunique()
             # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
             self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
@@ -158,8 +158,11 @@ class WrapperHier(Wrapper):
 
             en = en.fit(train_y_label)
             y_train = np.array(list(map(en.node_map.get, train_y_label)))
-            y_test = np.array(list(map(en.node_map.get, test_y_label)))
-            print(y_train)
+            # y_test = np.array(list(map(partial(en.node_map.get, d=-1), test_y_label)))
+            y_test = []
+            for lable in test_y_label:
+                 y_test.append(en.node_map.get(lable, -1))
+            y_test = np.array(y_test)
 
             nodes = en.G_idx.nodes()
             R = get_R(en)

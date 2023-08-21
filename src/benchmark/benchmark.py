@@ -5,6 +5,7 @@ from sklearn.preprocessing import OrdinalEncoder
 
 import random
 import anndata
+from models.wrapper import WrapperHier
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -153,6 +154,7 @@ class Benchmark:
                             msg_type='content'
                         )
                 y_test_predict_uncalib = model_selected.predict(X_test)
+                print(y_test_predict_uncalib)
                 classifier.set_modelFitted(model_selected)
                 # Uncaliberated confidence
                 y_test_proba_uncalib_all, logits = classifier.predict_proba(model_selected, X_test)
@@ -164,27 +166,30 @@ class Benchmark:
                 y_test_proba_uncalib = []
                 y_test_predict_calib = []
                 ece = []
-                if logits is not None:
-                    # model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
-                    model_calibrated = CalibratedClassifier(classifier)
-                    model_calibrated.fit(X_val_cal, y_val_cal)
+                if isinstance(classifier, WrapperHier):
+                    pass
+                else:
+                    if logits is not None:
+                        # model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
+                        model_calibrated = CalibratedClassifier(classifier)
+                        model_calibrated.fit(X_val_cal, y_val_cal)
 
-                    y_test_predict_calib = model_calibrated.predict(X_test)
-                    y_test_proba_calib_all = model_calibrated.predict_proba(X_test).astype(float)
-                    for sample_idx, class_idx in enumerate(y_test_predict_calib):
-                        # print(y_test_proba_calib_all)
-                        # print(sample_idx, class_idx)
-                        y_test_proba_calib.append(y_test_proba_calib_all[sample_idx, class_idx])
-                        if y_test_proba_uncalib_all is not None:
-                            y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
-                    y_test_predict_calib = y_test_predict_calib.tolist()
-                    ece = calibration_error(y_test, y_test_predict_calib, y_test_proba_calib)
-                else: #TODO reafactor to func
-                    for sample_idx, class_idx in enumerate(y_test_predict_uncalib):
-                        if y_test_proba_uncalib_all is not None:
-                            y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
-                    # y_test_predict_calib = y_test_predict_calib.tolist()
-                    ece = calibration_error(y_test, y_test_predict_uncalib, y_test_proba_uncalib)
+                        y_test_predict_calib = model_calibrated.predict(X_test)
+                        y_test_proba_calib_all = model_calibrated.predict_proba(X_test).astype(float)
+                        for sample_idx, class_idx in enumerate(y_test_predict_calib):
+                            # print(y_test_proba_calib_all)
+                            # print(sample_idx, class_idx)
+                            y_test_proba_calib.append(y_test_proba_calib_all[sample_idx, class_idx])
+                            if y_test_proba_uncalib_all is not None:
+                                y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
+                        y_test_predict_calib = y_test_predict_calib.tolist()
+                        ece = calibration_error(y_test, y_test_predict_calib, y_test_proba_calib)
+                    else: #TODO reafactor to func
+                        for sample_idx, class_idx in enumerate(y_test_predict_uncalib):
+                            if y_test_proba_uncalib_all is not None:
+                                y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
+                        # y_test_predict_calib = y_test_predict_calib.tolist()
+                        ece = calibration_error(y_test, y_test_predict_uncalib, y_test_proba_uncalib)
 
                 model_result.setdefault('predicts_calib', []).append(y_test_predict_calib) 
                 model_result.setdefault('predicts_uncalib', []).append(y_test_predict_uncalib.tolist()) 
@@ -197,7 +202,7 @@ class Benchmark:
 
                 # Calculate metrics
                 for metric_name, metric in outer_metrics.items():
-                    score = metric(y_test_predict, y_test)
+                    score = metric(y_test, y_test_predict)
                     scores = model_result.setdefault('scores', {})
                     scores.setdefault(f'{metric_name}', {}).setdefault('full', []).append(score)
 

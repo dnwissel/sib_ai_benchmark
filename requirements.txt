@@ -7,4 +7,6 @@ scanpy
 scipy
 scikit-learn
 wget
-
+torch
+networkx
+gdown
