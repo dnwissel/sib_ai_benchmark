@@ -10,11 +10,11 @@ debug = False
 parent_path = Path(__file__).parents[2]
 path_tissue_data = os.path.join(parent_path, "data-raw/raw_data_per_tissue")
 
-path_scanvi_bcm= os.path.join(parent_path, "data-raw/scanvi_bcm")
+path_scanvi_bcm = os.path.join(parent_path, "data-raw/scanvi_bcm")
 path_scanvi_b = os.path.join(parent_path, "data-raw/scanvi_b")
 path_scanvi_ = os.path.join(parent_path, "data-raw/scanvi_")
 
-path_pca_bcm= os.path.join(parent_path, "data-raw/pca_bcm")
+path_pca_bcm = os.path.join(parent_path, "data-raw/pca_bcm")
 path_pca_b = os.path.join(parent_path, "data-raw/pca_b")
 path_pca_ = os.path.join(parent_path, "data-raw/pca_")
 
