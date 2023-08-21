@@ -34,6 +34,8 @@ def load_embeddings(path, batch_min=3, is_row_id=True):
             ann_test = anndata.read_h5ad(path + '/' + v[i + 1])
             # print(ann_train.obs.columns)
             if is_row_id:
+                # print(ann_train.obs['y'].shape)
+                # print(ann_train.obs['batch_id'].shape)
                 splits_data.setdefault(k, []).append(
                     [(ann_train.X, ann_train.obs['y'], ann_train.obs['batch_id'], ann_train.obs['id']), 
                     (ann_test.X, ann_test.obs['y'], ann_test.obs['batch_id'], ann_test.obs['id'])]

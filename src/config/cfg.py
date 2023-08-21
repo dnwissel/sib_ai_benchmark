@@ -4,7 +4,7 @@ from utilities import dataLoader  as dl
 from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-debug = False
+debug = True
 
 #TODO: put embeddings under data/
 parent_path = Path(__file__).parents[2]
@@ -55,8 +55,8 @@ experiments = {
     },
     
     'scanvi_bcm': {
-        'data_path': path_scanvi_bcm,
-        # 'data_path': path_debug,
+        # 'data_path': path_scanvi_bcm,
+        'data_path': path_debug,
         'dataloader': dl.load_embeddings,
         'is_pre_splits': True,
         'model_type': 'flat',

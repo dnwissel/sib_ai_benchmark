@@ -55,7 +55,7 @@ def subplot(data, ax, info):
     # Set the axes ranges and axes labels
     ax.set_xlim(0.5, num_boxes + 0.5)
     top = 1.08
-    bottom = 0.5
+    bottom = -0.05
     ax.set_ylim(bottom, top)
     ax.set_xticklabels(info['labels'], rotation=45, fontsize=8)
 

@@ -87,6 +87,7 @@ class Benchmark:
                     y_train, y_test = train[1], test[1]
                     inner_groups = train[2]
                     row_ids_split = test[3]
+                    # print(X_train.shape, inner_groups.shape)
 
                 # Initialise model
                 pipeline, param_grid, y_train, y_test = classifier.init_model(X_train, y_train, y_test)
@@ -96,7 +97,8 @@ class Benchmark:
                 train_idx, val_idx_cal = next(cal_cv.split(X_train, y_train)) 
                 X_train, X_val_cal = X_train[train_idx], X_train[val_idx_cal]
                 y_train, y_val_cal = y_train[train_idx], y_train[val_idx_cal]
-
+                inner_groups = inner_groups[train_idx]
+                
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
                     test_row_ids.append(row_ids_split.tolist())
@@ -244,8 +246,9 @@ class Benchmark:
         # for name, path in data_paths.items():
         for dn, dataset in self.datasets.items():
             logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
-            inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
+            # inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
             # inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
+            inner_cv = LeaveOneGroupOut()
             outer_cv = LeaveOneGroupOut()
             if not is_pre_splits:
                 model_results, true_labels_test, test_row_ids = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
