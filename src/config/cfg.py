@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 debug = False
 
+#TODO: put embeddings under data/
 parent_path = Path(__file__).parents[2]
 path_tissue_data = os.path.join(parent_path, "data-raw/raw_data_per_tissue")
 
@@ -24,7 +25,6 @@ path_res = os.path.join(parent_path, "results/")
 path_debug = os.path.join(parent_path, "data-raw/processed")
 
 n_dim = 30
-
 
 experiments = {
     'pca_': {
