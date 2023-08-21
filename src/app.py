@@ -71,7 +71,7 @@ def main():
 
     # Set Pipeline
     for clsw in classifier_wrappers:
-        preprocessing_steps = exp_cfg['ppSteps']
+        preprocessing_steps = exp_cfg['ppSteps'][:]
         if clsw.name == 'NaiveBayes':
             preprocessing_steps[-1] = ('StandardScaler', MinMaxScaler())
         clsw.set_ppSteps(preprocessing_steps)

@@ -69,7 +69,7 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
 
     #TODO: argmax for PS/VS
     def predict(self, X):
-        return self.classifier.model_fitted.predict(X)
+        return self.classifier.model_fitted.predict(X).astype(int)
 
     def predict_proba(self, X):
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)

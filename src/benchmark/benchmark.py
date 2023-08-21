@@ -170,6 +170,8 @@ class Benchmark:
                     y_test_predict_calib = model_calibrated.predict(X_test)
                     y_test_proba_calib_all = model_calibrated.predict_proba(X_test).astype(float)
                     for sample_idx, class_idx in enumerate(y_test_predict_calib):
+                        # print(y_test_proba_calib_all)
+                        # print(sample_idx, class_idx)
                         y_test_proba_calib.append(y_test_proba_calib_all[sample_idx, class_idx])
                         if y_test_proba_uncalib_all is not None:
                             y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
@@ -186,7 +188,7 @@ class Benchmark:
                 model_result.setdefault('predicts_uncalib', []).append(y_test_predict_uncalib.tolist()) 
                 model_result.setdefault('proba_calib', []).append(y_test_proba_calib) 
                 model_result.setdefault('proba_uncalib', []).append(y_test_proba_uncalib) 
-                model_result.setdefault('logits', []).append(logits) 
+                model_result.setdefault('logits', []).append(logits.tolist() if logits is not None else logits) 
                 model_result.setdefault('ece', []).append(ece) 
 
                 y_test_predict = y_test_predict_uncalib 

@@ -32,7 +32,8 @@ experiments = {
     },
     
     'scanvi_bcm': {
-        'data_path': path_embeddings_bcm,
+        # 'data_path': path_embeddings_bcm,
+        'data_path': path_debug,
         'dataloader': dl.load_embeddings,
         'is_pre_splits': True,
         'model_type': 'flat',
