@@ -3,9 +3,11 @@ import numpy as np
 import pandas as pd
 import scanpy
 from scipy.sparse import csr_matrix, hstack, vstack
+from pathlib import Path
 
-bgee = scanpy.read_h5ad("./data-raw/SRP200614.h5ad.txt")
-asap = scanpy.read_h5ad("./data-raw/asap.h5ad")
+p = Path(__file__).parents[1]
+bgee = scanpy.read_h5ad(p.joinpath("data-raw", "SRP200614.h5ad"))
+asap = scanpy.read_h5ad(p.joinpath("data-raw", "ASAP41_final.h5ad"))
 asap_mask = np.logical_and(
     asap.obs["cellTypeId"] != "NA",
     asap.obs["scrublet_call"].values.astype(str) != "1.0",
@@ -102,9 +104,9 @@ types_to_keep = np.array([i for i in types_to_keep if "[" not in i])
 combined_adata = combined_adata[
     np.isin(combined_adata.obs.y, types_to_keep), :
 ]
-combined_adata.write_h5ad("./data-raw/data_unionized.h5ad")
+combined_adata.write_h5ad(p.joinpath("data-raw", "data_unionized.h5ad"))
 
-for tissue in np.unique(combined_adata.obs.tissue):
-    combined_adata[combined_adata.obs.tissue == tissue, :].write_h5ad(
-        f"./data-raw/data_{tissue}_unionized.h5ad"
-    )
+# for tissue in np.unique(combined_adata.obs.tissue):
+#     combined_adata[combined_adata.obs.tissue == tissue, :].write_h5ad(
+#         f"data-raw/data_{tissue}_unionized.h5ad"
+#     )

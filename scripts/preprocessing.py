@@ -56,17 +56,19 @@ def main():
         "--read_path",
         type=lambda i: p.joinpath("data-raw", i),
         # default=p.joinpath("data-raw", "ASAP41_final.h5ad"),  # ASAP
-        default=p.joinpath(
-            "data-raw", "asap-tissue", "asap_antenna.h5ad"
-        ),  # ASAP tissue
+        # default=p.joinpath(
+        #     "data-raw", "asap-tissue", "asap_antenna.h5ad"
+        # ),  # ASAP tissue
         # default=p.joinpath("data-raw", "SRP200614.h5ad"),  # Bgee
+        default=p.joinpath("data-raw", "data_unionized.h5ad"),
         help="Path to read the data file",
     )
     parser.add_argument(
         "--save_path",
         type=lambda i: p.joinpath("data", i),
-        default=p.joinpath("data", "asap", "preprocessed"),  # ASAP
+        # default=p.joinpath("data", "asap", "preprocessed"),  # ASAP
         # default=p.joinpath("data", "bgee", "preprocessed"),  # Bgee
+        default=p.joinpath("data-raw", "preprocessed"),
         help="Path to save the preprocessed data",
     )
     parser.add_argument(
@@ -111,8 +113,8 @@ def main():
     parser.add_argument(
         "--batch_column",
         type=str,
-        default="batch",  # ASAP
-        # default=None,  # Bgee
+        default="batch_id",  # unionized
+        # default=None,  
         help="Column name of batches. \nIf not provided, will be set to None.",
     )
     parser.add_argument(
@@ -136,19 +138,19 @@ def main():
     parser.add_argument(
         "--n_genes_by_counts_upper",
         type=int,
-        default=2500,
+        default=100000, 
         help="Set the upper limit of the number of genes expressed in the counts matrix (n_genes_by_counts)",
     )
     parser.add_argument(
         "--pct_counts_mt_upper",
         type=float,
-        default=20,
+        default=25,
         help="Set the upper limit of the percentage of counts in mitochondrial genes",
     )
     parser.add_argument(
         "--normalize_target_sum",
         type=int,
-        default=2000,
+        default=10000,
         help="Normalize the sum of counts in every cell to (normalize_target_sum) UMI",
     )
     parser.add_argument(
@@ -247,7 +249,7 @@ def main():
             batch_pp_list.append(batch_pp)
         tissue_pp = ad.concat(batch_pp_list, merge="same")
         logging.info(f"tissue_pp.shape = {tissue_pp.shape}")
-        new_anndata = ad.AnnData(X=tissue_pp.X)
+        new_anndata = ad.AnnData(X=tissue_pp.X, raw=tissue_pp.raw)
         new_anndata.obs = tissue_pp.obs[
             ["batch_id", "pct_counts_mt", "cell_cycle_diff", "y"]
         ]
