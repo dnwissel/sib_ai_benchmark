@@ -106,7 +106,7 @@ combined_adata = combined_adata[
 ]
 combined_adata.write_h5ad(p.joinpath("data-raw", "data_unionized.h5ad"))
 
-# for tissue in np.unique(combined_adata.obs.tissue):
-#     combined_adata[combined_adata.obs.tissue == tissue, :].write_h5ad(
-#         f"data-raw/data_{tissue}_unionized.h5ad"
-#     )
+for tissue in np.unique(combined_adata.obs.tissue):
+    combined_adata[combined_adata.obs.tissue == tissue, :].write_h5ad(
+        f"data-raw/data_{tissue}_unionized.h5ad"
+    )

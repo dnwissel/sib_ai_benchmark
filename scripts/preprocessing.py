@@ -60,7 +60,7 @@ def main():
         #     "data-raw", "asap-tissue", "asap_antenna.h5ad"
         # ),  # ASAP tissue
         # default=p.joinpath("data-raw", "SRP200614.h5ad"),  # Bgee
-        default=p.joinpath("data-raw", "data_unionized.h5ad"),
+        default=p.joinpath("data-raw", "data_wing_unionized.h5ad"),
         help="Path to read the data file",
     )
     parser.add_argument(
@@ -68,7 +68,7 @@ def main():
         type=lambda i: p.joinpath("data", i),
         # default=p.joinpath("data", "asap", "preprocessed"),  # ASAP
         # default=p.joinpath("data", "bgee", "preprocessed"),  # Bgee
-        default=p.joinpath("data-raw", "preprocessed"),
+        default=p.joinpath("data"),
         help="Path to save the preprocessed data",
     )
     parser.add_argument(
