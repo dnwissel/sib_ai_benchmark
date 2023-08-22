@@ -96,7 +96,7 @@ def plot(results, metric_name, path, ncols=2):
     info['labels'] = list(model_names)
     info['metric_name'] = metric_name
 
-    print(info['labels'])
+    # print(info['labels'])
     for tn in tissue_names:
         res_tissue = results['datasets'][tn]['model_results']
         res_model =[]
