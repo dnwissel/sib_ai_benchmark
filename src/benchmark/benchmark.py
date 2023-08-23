@@ -117,7 +117,7 @@ class Benchmark:
                             param_grid, 
                             cv=inner_cv, 
                             scoring=inner_metrics, 
-                            n_iter=1 if cfg.debug else 15, # jusify 30
+                            n_iter=1 if cfg.debug else 10, # jusify 30
                             refit=True, 
                             n_jobs=-1
                         ) 

@@ -74,6 +74,6 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
     def predict_proba(self, X):
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
         if torch.is_tensor(logits):
-            return self.model(logits).detach().numpy().astype(np.float)
+            return self.model(logits).cpu().detach().numpy().astype(float)
         input = torch.from_numpy(logits).to(torch.float).to(device)
-        return self.model(input).detach().numpy().astype(np.float)
+        return self.model(input).cpu().detach().numpy().astype(float)

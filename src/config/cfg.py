@@ -39,7 +39,7 @@ experiments = {
     'pca_bcm': {
         'data_path': path_pca_bcm,
         'dataloader': dl.load_pre_splits,
-        'is_pre_splits': False,
+        'is_pre_splits': True,
         'model_type': 'flat',
         'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)),('StandardScaler', StandardScaler())],
         'ppParams': None,
