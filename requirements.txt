@@ -1,12 +1,13 @@
 anndata
 matplotlib
 numpy
+networkx
 pandas
 pre-commit
 scanpy
 scipy
 scikit-learn
-wget
+skorch
 torch
-networkx
+wget
 gdown

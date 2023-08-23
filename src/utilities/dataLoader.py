@@ -9,7 +9,7 @@ import networkx as nx
 from models import flatModels, globalModels
 
 
-def load_embeddings(path, batch_min=3, is_row_id=True):
+def load_pre_splits(path, batch_min=3, is_row_id=True):
     splits_fn = {}
     for fn in os.listdir(path):
         idx = fn.find('_train_')

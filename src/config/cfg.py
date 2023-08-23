@@ -38,7 +38,7 @@ experiments = {
 
     'pca_bcm': {
         'data_path': path_pca_bcm,
-        'dataloader': dl.load_tissue_raw,
+        'dataloader': dl.load_pre_splits,
         'is_pre_splits': False,
         'model_type': 'flat',
         'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)),('StandardScaler', StandardScaler())],
@@ -47,7 +47,7 @@ experiments = {
 
     'pca_b': {
         'data_path': path_pca_b,
-        'dataloader': dl.load_tissue_raw,
+        'dataloader': dl.load_pre_splits,
         'is_pre_splits': False,
         'model_type': 'flat',
         'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)),('StandardScaler', StandardScaler())],
@@ -57,7 +57,7 @@ experiments = {
     'scanvi_bcm': {
         'data_path': path_scanvi_bcm,
         # 'data_path': path_debug,
-        'dataloader': dl.load_embeddings,
+        'dataloader': dl.load_pre_splits,
         'is_pre_splits': True,
         'model_type': 'flat',
         'ppSteps': [('StandardScaler', StandardScaler())],
@@ -66,7 +66,7 @@ experiments = {
 
     'scanvi_b': {
         'data_path': path_debug if debug else path_scanvi_b,
-        'dataloader': dl.load_embeddings,
+        'dataloader': dl.load_pre_splits,
         'is_pre_splits': True,
         'model_type': 'flat',
         'ppSteps': [('StandardScaler', StandardScaler())],
@@ -75,7 +75,7 @@ experiments = {
 
     'scanvi_': {
         'data_path': path_debug if debug else path_scanvi_,
-        'dataloader': dl.load_embeddings,
+        'dataloader': dl.load_pre_splits,
         'is_pre_splits': True,
         'model_type': 'flat',
         'ppSteps': [('StandardScaler', StandardScaler())],
