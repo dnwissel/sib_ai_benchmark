@@ -48,7 +48,6 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         self.temperature = None
         self.model = None
         
-
     def fit(self, X, y): 
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
         model = TemperatureScaling().to(device)
@@ -62,6 +61,7 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
             else:
                 input = torch.from_numpy(logits).to(torch.float).to(device)
             target = torch.from_numpy(y).to(device)
+        # print(input.device, target.device)
         self.model = train_model(model, input, target, criterion, optimizer, 20)
         # self.model = train_model_lbfgs(model, input, target, criterion)
         # print(self.model.temperature)
@@ -74,6 +74,6 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
     def predict_proba(self, X):
         _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
         if torch.is_tensor(logits):
-            return self.model(logits).cpu().detach().numpy().astype(float)
+            return self.model(logits.to(device)).cpu().detach().numpy().astype(float)
         input = torch.from_numpy(logits).to(torch.float).to(device)
         return self.model(input).cpu().detach().numpy().astype(float)
