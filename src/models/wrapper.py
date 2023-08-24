@@ -124,7 +124,8 @@ class WrapperNN(Wrapper):
             pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
             net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
             # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
-            return proba, net.forward(pl_pp.transform(X))
+            logits = net.forward(pl_pp.transform(X)).to('cpu').data
+            return proba, logits
 
 
 

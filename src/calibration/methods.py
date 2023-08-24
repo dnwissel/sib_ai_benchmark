@@ -19,6 +19,7 @@ class VectorScaling(nn.Module):
         logits = torch.matmul(logits, self.W) + self.b
         return F.softmax(logits, dim=-1)
 
+
 class MatrixScaling(nn.Module):
     def __init__(self, logits_len):
         super().__init__()
