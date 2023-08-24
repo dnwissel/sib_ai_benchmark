@@ -79,9 +79,9 @@ def main():
     # Run benchmark
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
     params = dict(
-        inner_metrics='accuracy',
+        # inner_metrics='accuracy',
         # inner_metrics=make_scorer(debug),
-        # inner_metrics=partial(f1_score, average='macro'),
+        inner_metrics=make_scorer(partial(f1_score, average='macro')),
         outer_metrics={'accuracy': accuracy_score, 'balanced_accuracy_score': balanced_accuracy_score, 'f1_score_macro': partial(f1_score, average='macro'), 'f1_score_weighted': partial(f1_score, average='weighted')},
         task_name=exp_name + '_' + model_type,
         is_pre_splits=exp_cfg['is_pre_splits']
