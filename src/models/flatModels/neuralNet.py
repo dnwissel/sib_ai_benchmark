@@ -44,6 +44,8 @@ class NeuralNet(nn.Module):
         self.layers_seq = nn.Sequential(*layers)
 
     def forward(self, X, **kwargs):
+        self.layers_seq = self.layers_seq.to(torch.float32)
+        print(X)
         X = self.layers_seq(X)
         return X
 

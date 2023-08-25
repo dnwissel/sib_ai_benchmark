@@ -6,6 +6,7 @@ from utilities.hier import Encoder, get_lossMask, get_R
 from scipy.special import softmax
 from utilities import dataLoader  as dl
 import numpy as np
+import torch
 
 
 
@@ -94,7 +95,6 @@ class WrapperNN(Wrapper):
 
         def init_model(self, X, train_y_label, test_y_label):
             # num_feature, num_class = X.shape[1], train_y_label.nunique()
-            X, train_y_label, test_y_label = X.astype(float32), train_y_label.astype(np.int64), test_y_label.astype(np.int64)
             num_feature, num_class = X.shape[1], train_y_label.nunique()
             # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
             self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
