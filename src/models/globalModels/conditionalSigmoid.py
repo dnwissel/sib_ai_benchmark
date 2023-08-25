@@ -12,7 +12,7 @@ import numpy as np
 import networkx as nx
 from config import cfg
 
-from models.wrapper import WrapperHier
+from models.wrapper import WrapperHier, WrapperHierCS
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
@@ -245,7 +245,7 @@ params = dict(
 
 
 # Please don't change this line
-wrapper = WrapperHier(**params)
+wrapper = WrapperHierCS(**params)
 
 
 if __name__ == "__main__":
