@@ -2,7 +2,7 @@ from functools import partial
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from config import cfg
-from utilities.hier import Encoder, get_lm, get_R
+from utilities.hier import Encoder, get_lossMask, get_R
 from scipy.special import softmax
 from utilities import dataLoader  as dl
 import numpy as np
@@ -168,6 +168,67 @@ class WrapperHier(Wrapper):
             nodes = en.G_idx.nodes()
             R = get_R(en)
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
+            self.model.set_params(
+                 module__en=en,
+                 module__R=R,
+                 module__dim_in=X.shape[1],
+                 module__dim_out=len(en.G_idx.nodes()), 
+                 criterion__R=R, 
+                 criterion__idx_to_eval=idx_to_eval
+            ) 
+
+            # y = y.astype(np.int64)
+            return pipeline, param_grid, y_train, y_test
+
+
+        def predict_proba(self, model_fitted, X):
+            proba = model_fitted.predict_proba(X)
+            pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
+            net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
+            # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
+            return proba, net.forward(pl_pp.transform(X))
+
+
+class WrapperHierCS(Wrapper):
+        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
+                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
+
+        def init_model(self, X, train_y_label, test_y_label):
+
+            # Define pipeline and param_grid
+            param_grid = {}
+            if self.tuning_space:
+                for key, value in self.tuning_space.items():
+                    param_grid[self.name + '__' + key] = value
+
+            if not self.preprocessing_steps:
+                pipeline = Pipeline([(self.name, self.model)])
+            else:
+                pipeline = Pipeline(self.preprocessing_steps + [(self.name, self.model)])
+                
+                if self.preprocessing_params:
+                    param_grid.update(self.preprocessing_params)
+            
+            # Set Loss params
+            # Ecode y
+            
+            self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
+            en = Encoder(self.g_global, self.roots_label)
+            # y_train = en.fit_transform(train_y_label)
+            # y_test = en.transform(test_y_label)
+
+            en = en.fit(train_y_label)
+            y_train = np.array(list(map(en.node_map.get, train_y_label)))
+            # y_test = np.array(list(map(partial(en.node_map.get, d=-1), test_y_label)))
+            y_test = []
+            for lable in test_y_label:
+                 y_test.append(en.node_map.get(lable, -1))
+            y_test = np.array(y_test)
+
+            nodes = en.G_idx.nodes()
+            R = get_R(en)
+            idx_to_eval = list(set(nodes) - set(en.roots_idx))
+            # loss_mask = 
             self.model.set_params(
                  module__en=en,
                  module__R=R,
