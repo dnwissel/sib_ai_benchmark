@@ -39,7 +39,7 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
         # self.classes = classes
     
     def fit_loop(self, X, y=None, epochs=None, **fit_params): 
-        y = self.module.en.transform(y)  
+        # y = self.module.en.transform(y)  
 
         self.check_data(X, y)
         self.check_training_readiness()
@@ -124,61 +124,41 @@ def get_constr_out(x, R):
     return final_out
 
 
-class MCLoss(nn.Module):
-    def __init__(self, R, idx_to_eval):
-        super().__init__()
-        self.R = R
-        self.idx_to_eval = idx_to_eval
-        # self.criterion = nn.BCELoss()
-        self.criterion = nn.BCEWithLogitsLoss()
-
-    def forward(self, output, target):
-        constr_output = get_constr_out(output, self.R)
-        train_output = target*output.double()
-        train_output = get_constr_out(train_output, self.R)
-        train_output = (1-target)*constr_output.double() + target*train_output
-
-        #MCLoss
-        # print(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
-        # mask = train_output < 0
-        # train_output[mask] = 0
-        loss = self.criterion(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
-        return loss
-
-
 class MaskBCE(nn.Module):
-    def __init__(self, label_loader, loss_mask, R, idx_to_eval):
+    def __init__(self, en, loss_mask, idx_to_eval):
         super().__init__()
-        self.label_loader = list(label_loader)
+        self.en = en
         self.loss_mask = loss_mask
-        self.R = R
+        # self.R = R
         self.idx_to_eval = idx_to_eval
         # self.criterion = F.binary_cross_entropy()
         self.bid = 0
 
 
     def forward(self, output, target):
-        constr_output = get_constr_out(output, self.R)
-        train_output = target*output.double()
-        train_output = get_constr_out(train_output, self.R)
-        train_output = (1-target)*constr_output.double() + target*train_output
+        # constr_output = get_constr_out(output, self.R)
+        # train_output = target*output.double()
+        # train_output = get_constr_out(train_output, self.R)
+        # train_output = (1-target)*constr_output.double() + target*train_output
+        train_output = output
 
         #Mask Loss
-        # lm_batch = self.loss_mask[self.label_loader[0], :]
-        lm_batch = self.loss_mask[self.label_loader[self.bid], :][:,  self.idx_to_eval]
+        lm_batch = self.loss_mask[target]
+        target = self.en.transform(target)
+        # lm_batch = self.loss_mask[self.label_loader[self.bid], :][:,  self.idx_to_eval]
         # print(lm_batch.shape, train_output.shape,target.shape)
         loss = F.binary_cross_entropy(train_output[:,self.idx_to_eval], target[:,self.idx_to_eval], reduction='none')
-        loss = lm_batch * loss
+        # loss = lm_batch * loss
         self.bid = (self.bid + 1) % len(self.label_loader)
         # print(self.bid)
         return loss.sum()
     
 
 class ConditionalSigmoid(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en, R):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power,  R):
         super().__init__()
         # self.module.en = en
-        ConditionalSigmoid.en = en
+        # ConditionalSigmoid.en = en
         # self.R = R
         ConditionalSigmoid.R = R
 

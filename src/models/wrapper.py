@@ -228,13 +228,13 @@ class WrapperHierCS(Wrapper):
             nodes = en.G_idx.nodes()
             R = get_R(en)
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
-            # loss_mask = 
+            loss_mask = get_lossMask(en)
             self.model.set_params(
-                 module__en=en,
                  module__R=R,
                  module__dim_in=X.shape[1],
                  module__dim_out=len(en.G_idx.nodes()), 
-                 criterion__R=R, 
+                 criterion__en=en,
+                 criterion__loss_mask=loss_mask, 
                  criterion__idx_to_eval=idx_to_eval
             ) 
 
