@@ -16,6 +16,8 @@ class Encoder:
         self.label_idx = None # train labels in idx
         self.node_map = None
         self.roots_label = roots_label
+        self.predecessor_dict = {}
+        self.successor_dict = {}
 
 
     def fit(self, y):
@@ -43,7 +45,11 @@ class Encoder:
         self.roots_idx = [v for k, v in  self.node_map.items() if k in self.roots_label]
 
         self.label_idx = np.array(list(map(self.node_map.get, y)))
-        # y= self._encode_y(y)
+
+        for n in self.G_idx.nodes:
+            self.predecessor_dict[n] = self.G_idx.predecessors(n)
+            self.successor_dict[n] = self.G_idx.successors(n)
+
         return self
 
     def transform(self, y):

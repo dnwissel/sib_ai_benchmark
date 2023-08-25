@@ -10,6 +10,7 @@ from sklearn.pipeline import Pipeline
 
 import numpy as np
 import networkx as nx
+from config import cfg
 
 from models.wrapper import WrapperHier
 from skorch import NeuralNetClassifier
@@ -75,11 +76,15 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
         return preds
     
 
-    def _lhs_parent(self, node, en, predecessor_dict,  row):
-        if node in en.roots_idx:
-            return 1
-        s_prime_pos = list(map(partial(self._lhs_parent, en=en, predecessor_dict=predecessor_dict, row=row), predecessor_dict[node])) #TODO: precompute
-        return row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
+    def _lhs(self, node, en, row, memo):
+        value = memo[node]
+        if value != -1:
+            return value
+        s_prime_pos = list(map(partial(self._lhs, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
+        lh_children = torch.prod(1 -  row[list(en.successor_dict[node])])
+        lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos))) * lh_children
+        memo[node] = lh
+        return memo[node]
 
 
     def _inference(self, constrained_output):
@@ -92,18 +97,16 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
             #     nx.set_node_attributes(en.G_idx, {root: {'lh': 1}})
 
             memo = np.zeros(self.module.R.shape[1]) - 1
-            for root in self.en.roots_idx:
+            for root in self.module.en.roots_idx:
                 memo[root] = 1
 
-            lhs = np.zeros(len(self.en.label_idx))
-            for idx, label in enumerate(self.en.label_idx):
-                lh_y_cond = row[label]
-                lh_children = torch.prod(1 -  row[list(self.en.G_idx.successors(label))])
-                lh_parent = self._lhs_parent(label, self.en, row, memo)
-                lhs[idx] = lh_y_cond * lh_parent * lh_children
-            y_pred[row_idx] = self.en.label_idx[np.argmax(lhs)]
-        # y_true = [self.en.node_map.get(e) for e in test_Y_raw]
-        # y_true = list(map(self.en.node_map.get, test_Y_raw))
+            lhs = np.zeros(len(self.module.en.label_idx))
+            for idx, label in enumerate(self.module.en.label_idx):
+                lh_ = self._lhs(label, self.module.en, row, memo)
+                lhs[idx] = lh_
+            y_pred[row_idx] = self.module.en.label_idx[np.argmax(lhs)]
+        # y_true = [self.module.en.node_map.get(e) for e in test_Y_raw]
+        # y_true = list(map(self.module.en.node_map.get, test_Y_raw))
         return y_pred
 
 
@@ -238,9 +241,9 @@ tuning_space={
 }
 
 model=NeuralNetClassifierHier(
-            module=C_HMCNN,
+            module=ConditionalSigmoid,
             # max_epochs=30,
-            max_epochs=3,
+            max_epochs=1 if cfg.debug else 30,
             criterion=MaskBCE,
             train_split=None,
             # train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
