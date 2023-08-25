@@ -38,8 +38,7 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
         # self.classes = classes
     
     def fit_loop(self, X, y=None, epochs=None, **fit_params): 
-        y = self.module.en.transform(y)  
-
+        # y = self.module.en.transform(y)  
         self.check_data(X, y)
         self.check_training_readiness()
         epochs = epochs if epochs is not None else self.max_epochs
@@ -107,8 +106,8 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
 def get_constr_out(x, R):
     """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
     # print(type(x))
-    if type(x) is np.ndarray:
-        print(x)
+    # if type(x) is np.ndarray:
+    #     print(x)
     
     c_out = x.double()
     c_out = c_out.unsqueeze(1)
@@ -119,12 +118,12 @@ def get_constr_out(x, R):
 
 
 class MCLoss(nn.Module):
-    def __init__(self, R, idx_to_eval):
+    def __init__(self, en, R, idx_to_eval):
         super().__init__()
         self.R = R
         self.idx_to_eval = idx_to_eval
-        # self.criterion = nn.BCELoss()
         self.criterion = nn.BCEWithLogitsLoss()
+        self.en = en
 
     def forward(self, output, target):
         constr_output = get_constr_out(output, self.R)
@@ -136,15 +135,16 @@ class MCLoss(nn.Module):
         # print(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
         # mask = train_output < 0
         # train_output[mask] = 0
+        target = self.en.transform(target)
         loss = self.criterion(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
         return loss
 
 
 class C_HMCNN(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en, R):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, R):
         super().__init__()
         # self.module.en = en
-        C_HMCNN.en = en
+        # C_HMCNN.en = en
         # self.R = R
         C_HMCNN.R = R
 
