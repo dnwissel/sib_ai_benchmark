@@ -132,7 +132,7 @@ class MaskBCE(nn.Module):
         # self.R = R
         self.idx_to_eval = idx_to_eval
         # self.criterion = F.binary_cross_entropy()
-        self.bid = 0
+        # self.bid = 0
 
 
     def forward(self, output, target):
@@ -145,20 +145,23 @@ class MaskBCE(nn.Module):
         #Mask Loss
         lm_batch = self.loss_mask[target]
         target = self.en.transform(target)
+        target = target.astype(np.float32)
+        target = torch.from_numpy(target).to(device)
+
         # lm_batch = self.loss_mask[self.label_loader[self.bid], :][:,  self.idx_to_eval]
         # print(lm_batch.shape, train_output.shape,target.shape)
-        loss = F.binary_cross_entropy(train_output[:,self.idx_to_eval], target[:,self.idx_to_eval], reduction='none')
-        # loss = lm_batch * loss
-        self.bid = (self.bid + 1) % len(self.label_loader)
+        loss = F.binary_cross_entropy_with_logits(train_output[:,self.idx_to_eval], target[:,self.idx_to_eval], reduction='none')
+        loss = lm_batch * loss
+        # self.bid = (self.bid + 1) % len(self.label_loader)
         # print(self.bid)
         return loss.sum()
     
 
 class ConditionalSigmoid(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power,  R):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en,  R):
         super().__init__()
         # self.module.en = en
-        # ConditionalSigmoid.en = en
+        ConditionalSigmoid.en = en
         # self.R = R
         ConditionalSigmoid.R = R
 

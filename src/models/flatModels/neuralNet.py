@@ -62,13 +62,14 @@ tuning_space={
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
-                'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                'module__nonlin': [nn.ReLU],
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
                 'module__num_hidden_layers': [1],
                 # 'module__dor_input': uniform(0, 0.3),
                 'module__neuron_power': range(8, 13),
                 'module__dor_input': [0],
-                'module__dor_hidden': uniform(0, 1)
+                'module__dor_hidden': uniform(0, 0.5)
 }
 
 params = dict(

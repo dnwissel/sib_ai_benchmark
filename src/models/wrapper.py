@@ -178,6 +178,7 @@ class WrapperHier(Wrapper):
 
             self.model.set_params(
                  module__R=R,
+                 module__en=en,
                  module__dim_in=num_feature,
                  module__dim_out=len(en.G_idx.nodes()), 
                  criterion__en=en,
@@ -244,6 +245,7 @@ class WrapperHierCS(Wrapper):
             
             self.model.set_params(
                  module__R=R,
+                 module__en=en,
                  module__dim_in=num_feature,
                  module__dim_out=len(en.G_idx.nodes()), 
                  criterion__en=en,

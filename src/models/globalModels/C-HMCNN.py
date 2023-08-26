@@ -126,6 +126,10 @@ class MCLoss(nn.Module):
         self.en = en
 
     def forward(self, output, target):
+        target = self.en.transform(target)
+        target = target.astype(np.float32)
+        target = torch.from_numpy(target).to(device)
+
         constr_output = get_constr_out(output, self.R)
         train_output = target*output.double()
         train_output = get_constr_out(train_output, self.R)
@@ -135,16 +139,15 @@ class MCLoss(nn.Module):
         # print(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
         # mask = train_output < 0
         # train_output[mask] = 0
-        target = self.en.transform(target)
         loss = self.criterion(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
         return loss
 
 
 class C_HMCNN(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, R):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en,  R):
         super().__init__()
         # self.module.en = en
-        # C_HMCNN.en = en
+        C_HMCNN.en = en
         # self.R = R
         C_HMCNN.R = R
 
@@ -203,7 +206,7 @@ tuning_space={
                 # 'module__dor_input': uniform(0, 0.3),
                 'module__neuron_power': range(8, 13),
                 'module__dor_input': [0],
-                'module__dor_hidden': uniform(0, 1)
+                'module__dor_hidden': uniform(0, 0.5)
 }
 
 model=NeuralNetClassifierHier(
