@@ -78,9 +78,9 @@ params = dict(
             module=NeuralNet,
             max_epochs=1 if cfg.debug else 30,
             criterion=nn.CrossEntropyLoss(),
-            train_split=ValidSplit(cv=0.2, stratified=False, random_state=5), # set later In case of intraDataset 
+            # train_split=ValidSplit(cv=0.2, stratified=False, random_state=5), # set later In case of intraDataset 
             verbose=0,
-            callbacks=[EarlyStopping(patience=3)], 
+            # callbacks=[EarlyStopping(patience=3)], 
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
