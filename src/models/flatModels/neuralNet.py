@@ -22,8 +22,8 @@ class NeuralNet(nn.Module):
         super().__init__()
 
         layers = []
-        # fixed_neuron_num = round(neuron_power * dim_in) - round(neuron_power * dim_in) % 16
         fixed_neuron_num = 2 ** neuron_power
+        
         # Configure input layer
         layers.extend([
             nn.Linear(dim_in, fixed_neuron_num), 
@@ -44,8 +44,6 @@ class NeuralNet(nn.Module):
         self.layers_seq = nn.Sequential(*layers)
 
     def forward(self, X, **kwargs):
-        # self.layers_seq = self.layers_seq.to(torch.float32)
-        # print(X)
         X = self.layers_seq(X)
         return X
 

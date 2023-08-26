@@ -4,7 +4,7 @@ from utilities import dataLoader  as dl
 from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-debug = False
+debug = True
 
 #TODO: put embeddings under data/
 parent_path = Path(__file__).parents[2]
@@ -22,13 +22,13 @@ path_pca_ = os.path.join(parent_path, "data-raw/pca_")
 path_union = os.path.join(parent_path, "data-raw/data_unionized.h5ad")
 path_hier = os.path.join(parent_path, "data-raw/sib_cell_type_hierarchy.tsv")
 path_res = os.path.join(parent_path, "results/")
-path_debug = os.path.join(parent_path, "data-raw/processed")
+path_debug = os.path.join(parent_path, "data-raw/debug")
 
 n_dim = 30
 
 experiments = {
     'pca_': {
-        'data_path': path_pca_,
+        'data_path': path_pca_ if not debug else path_debug,
         'dataloader': dl.load_tissue_raw,
         'is_pre_splits': False,
         'model_type': 'flat',
@@ -55,7 +55,7 @@ experiments = {
     },
     
     'scanvi_bcm': {
-        'data_path': path_scanvi_bcm,
+        'data_path': path_scanvi_bcm if not debug else path_debug,
         # 'data_path': path_debug,
         'dataloader': dl.load_pre_splits,
         'is_pre_splits': True,

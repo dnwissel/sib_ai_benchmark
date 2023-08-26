@@ -8,6 +8,7 @@ from scipy.special import softmax
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
+import pandas as pd
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -60,7 +61,12 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
                 input = logits.to(device)
             else:
                 input = torch.from_numpy(logits).to(torch.float).to(device)
-            target = torch.from_numpy(y).to(device)
+
+            if isinstance(y, pd.Series):
+                target = torch.from_numpy(y.to_numpy()).to(device)
+            else:
+                target = torch.from_numpy(y).to(device)
+
         # print(input.device, target.device)
         self.model = train_model(model, input, target, criterion, optimizer, 20)
         # self.model = train_model_lbfgs(model, input, target, criterion)

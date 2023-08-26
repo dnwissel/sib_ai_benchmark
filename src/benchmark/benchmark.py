@@ -79,12 +79,12 @@ class Benchmark:
             for fold_idx, (train, test) in enumerate(splits):
                 
                 if pre_splits is None:
-                    X_train, X_test = X[train], X[test]
+                    X_train, X_test = X[train].astype(np.float32), X[test].astype(np.float32)
                     y_train, y_test = y[train], y[test]
                     inner_groups = outer_groups[train]
                     row_ids_split = row_ids[test]
                 else:
-                    X_train, X_test = train[0], test[0]
+                    X_train, X_test = train[0].astype(np.float32), test[0].astype(np.float32)
                     y_train, y_test = train[1], test[1]
                     inner_groups = train[2]
                     row_ids_split = test[3]
@@ -99,7 +99,7 @@ class Benchmark:
                 X_train, X_val_cal = X_train[train_idx], X_train[val_idx_cal]
                 y_train, y_val_cal = y_train[train_idx], y_train[val_idx_cal]
                 inner_groups = inner_groups[train_idx]
-                
+
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
                     test_row_ids.append(row_ids_split.tolist())

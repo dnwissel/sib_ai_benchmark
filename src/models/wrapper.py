@@ -94,11 +94,6 @@ class WrapperNN(Wrapper):
                 super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
 
         def init_model(self, X, train_y_label, test_y_label):
-            # num_feature, num_class = X.shape[1], train_y_label.nunique()
-            num_feature, num_class = X.shape[1], train_y_label.nunique()
-            # num_feature, num_class = splits[0][0][0].shape[1], len(set(splits[0][0][1].nunique()) | set(splits[0][1][1].nunique()))
-            self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
-
             # Define pipeline and param_grid
             param_grid = {}
             if self.tuning_space:
@@ -112,7 +107,15 @@ class WrapperNN(Wrapper):
                 
                 if self.preprocessing_params:
                     param_grid.update(self.preprocessing_params)
-            
+
+            # Set input dim for NN
+            num_class = train_y_label.nunique()
+            try:
+                num_feature = pipeline['DimensionReduction'].n_components
+            except:
+                num_feature = X.shape[1]
+            self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
+
             # Encode labels
             le = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, dtype=int)
             y_train = le.fit_transform(train_y_label.to_numpy().reshape(-1, 1)).flatten()
@@ -152,11 +155,8 @@ class WrapperHier(Wrapper):
             
             # Set Loss params
             # Ecode y
-            
             self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
             en = Encoder(self.g_global, self.roots_label)
-            # y_train = en.fit_transform(train_y_label)
-            # y_test = en.transform(test_y_label)
 
             en = en.fit(train_y_label)
             y_train = np.array(list(map(en.node_map.get, train_y_label)))
@@ -169,9 +169,16 @@ class WrapperHier(Wrapper):
             nodes = en.G_idx.nodes()
             R = get_R(en)
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
+
+            # Set input dim for NN
+            try:
+                num_feature = pipeline['DimensionReduction'].n_components
+            except:
+                num_feature = X.shape[1]
+
             self.model.set_params(
                  module__R=R,
-                 module__dim_in=X.shape[1],
+                 module__dim_in=num_feature,
                  module__dim_out=len(en.G_idx.nodes()), 
                  criterion__en=en,
                  criterion__R=R, 
@@ -211,7 +218,6 @@ class WrapperHierCS(Wrapper):
             
             # Set Loss params
             # Ecode y
-            
             self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
             en = Encoder(self.g_global, self.roots_label)
             # y_train = en.fit_transform(train_y_label)
@@ -229,9 +235,16 @@ class WrapperHierCS(Wrapper):
             R = get_R(en)
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
             loss_mask = get_lossMask(en)
+
+            # Set input dim for NN
+            try:
+                num_feature = pipeline['DimensionReduction'].n_components
+            except:
+                num_feature = X.shape[1]
+            
             self.model.set_params(
                  module__R=R,
-                 module__dim_in=X.shape[1],
+                 module__dim_in=num_feature,
                  module__dim_out=len(en.G_idx.nodes()), 
                  criterion__en=en,
                  criterion__loss_mask=loss_mask, 
