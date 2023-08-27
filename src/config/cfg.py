@@ -4,7 +4,7 @@ from utilities import dataLoader  as dl
 from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-debug = False
+debug = True
 
 #TODO: put embeddings under data/
 parent_path = Path(__file__).parents[2]

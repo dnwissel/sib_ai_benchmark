@@ -59,7 +59,7 @@ def main():
 
     parser.add_argument(
         '-d',
-        "--deselect_models",
+        "--deselected_models",
         nargs='+',
         type=str,
         default=None,
@@ -70,7 +70,7 @@ def main():
 
     # Load data
     exp_name = args.experiment_name 
-    deselected_models = args.deselect_models
+    deselected_models = args.deselected_models
     exp_cfg = cfg.experiments[exp_name]
     model_type = exp_cfg['model_type'] if args.model_type is None else args.model_type
     classifier_wrappers = dl.load_models(model_type, deselected_models)
@@ -91,9 +91,9 @@ def main():
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
 
     if deselected_models is None:
-        task_name = exp_name + '_' + model_type 
+        task_name = exp_name + '_' + '_'.join(model_type)
     else:
-        task_name = exp_name + '_' + model_type + '_w/o_' + '_'.join(deselected_models)
+        task_name = exp_name + '_' + model_type + '_wo_' + '_'.join(deselected_models)
     
     f1_score_macro = partial(f1_score, average='macro')
     f1_score_weighted = partial(f1_score, average='weighted')
