@@ -88,7 +88,7 @@ def load_raw_data(path):
     return datasets
 
 
-def load_models(selected_models='all', deselected_models=None):
+def load_models(selected_models='all', deselected_models=[]):
     classifiers = []
     for module_info in pkgutil.iter_modules(flatModels.__path__):
         module = importlib.import_module('models.flatModels.' + module_info.name)
