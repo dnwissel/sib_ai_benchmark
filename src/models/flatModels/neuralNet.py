@@ -57,7 +57,7 @@ device = (
 )
 
 tuning_space={
-                'lr': loguniform(1e-3, 1e0),
+                'lr': loguniform(1e-3, 1e-1),
                 'batch_size': (16 * np.arange(1,8)).tolist(),
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
