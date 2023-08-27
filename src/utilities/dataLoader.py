@@ -83,20 +83,24 @@ def load_raw_data(path):
     if 'batch' in ann.obs.columns:
         groups = ann.obs['batch']
     # Datatype for torch tensors
-    X, y = X.astype(float32), y.astype(np.int64)
+    X, y = X.astype(np.float32), y.astype(np.int64)
     datasets = {'raw_data': (X.toarray(), y, groups)}
     return datasets
 
 
-def load_models(selected_models='all'):
+def load_models(selected_models='all', deselected_models=None):
     classifiers = []
     for module_info in pkgutil.iter_modules(flatModels.__path__):
         module = importlib.import_module('models.flatModels.' + module_info.name)
+        if selected_models in deselected_models:
+            continue
         if selected_models in ['all', 'flat'] or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
 
     for module_info in pkgutil.iter_modules(globalModels.__path__):
         module = importlib.import_module('models.globalModels.' + module_info.name)
+        if selected_models in deselected_models:
+            continue
         if selected_models in ['all', 'global'] or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
     # logger.write(
