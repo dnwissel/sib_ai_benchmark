@@ -60,14 +60,14 @@ class Benchmark:
     def _train_single_outer_split(self):
         pass
 
-    def _train(inner_cv, inner_metrics, outer_metrics, outer_cv, is_pre_splits,  dataset):
-        logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
+    def _train(inner_cv, inner_metrics, outer_metrics, outer_cv, is_pre_splits, classifiers, dataset):
+        # logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
 
         true_labels_test = []
         test_row_ids = []
         res = {}
-        for classifier in self.classifiers:
-            logger.write(f'{classifier.name}:', msg_type='subtitle')
+        for classifier in classifiers:
+            # logger.write(f'{classifier.name}:', msg_type='subtitle')
             best_params = []
             model_result = {}
             params_search_required = True
@@ -83,8 +83,6 @@ class Benchmark:
             
             # with Pool(processes=15) as pool:
             with multiprocessing.Pool() as pool:
-                # print "[0, 1, 4,..., 81]"
-                # print(pool.map(f, range(10)))
                 pass
 
             # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation
@@ -150,18 +148,19 @@ class Benchmark:
                 # Log results in the last fold
                 if fold_idx == n_splits - 1: 
                     if not params_search_required:
-                        logger.write(
-                            (f'Steps in pipline: {dict(pipeline_steps)}\n' # TODO: case: no pipeline 
-                            f'Best hyperparameters: Not available, parameters are defined by user.'), 
-                            msg_type='content'
-                        )
+                        # logger.write(
+                        #     (f'Steps in pipline: {dict(pipeline_steps)}\n' # TODO: case: no pipeline 
+                        #     f'Best hyperparameters: Not available, parameters are defined by user.'), 
+                        #     msg_type='content'
+                        # )
+                        pass
                     else:
                         best_params_unique = [str(dict(y)) for y in set(tuple(x.items()) for x in best_params)]
-                        logger.write(
-                            (f'Steps in pipline: {dict(pipeline_steps)}\n'
-                            f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}'),
-                            msg_type='content'
-                        )
+                        # logger.write(
+                        #     (f'Steps in pipline: {dict(pipeline_steps)}\n'
+                        #     f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}'),
+                        #     msg_type='content'
+                        # )
                 y_test_predict_uncalib = model_selected.predict(X_test)
                 classifier.set_modelFitted(model_selected)
                 # Uncaliberated confidence
@@ -220,14 +219,14 @@ class Benchmark:
                         median_score = np.median(scores_)
                         scores[metric_name].update({'mean': mean_score, 'median': median_score})
 
-                        logger.write(
-                            f'{metric_name.upper()}: Best Mean Score: {mean_score:.4f}  Best Median Score: {median_score:.4f}',
-                            msg_type='content'
-                        )
+                        # logger.write(
+                        #     f'{metric_name.upper()}: Best Mean Score: {mean_score:.4f}  Best Median Score: {median_score:.4f}',
+                        #     msg_type='content'
+                        # )
                         res[classifier.name] = model_result
                 # break
             
-            logger.write('', msg_type='content')
+            # logger.write('', msg_type='content')
 
         return {dataset[0]: [res, true_labels_test, test_row_ids]}
     
@@ -266,10 +265,12 @@ class Benchmark:
             inner_metrics=inner_metrics, 
             outer_metrics=outer_metrics, 
             outer_cv=outer_cv,
-            is_pre_splits=is_pre_splits
+            is_pre_splits=is_pre_splits,
+            classifiers=self.classifiers
             )
-
-        with multiprocessing.Pool() as pool:
+        num_processes = len(self.datasets)
+        # print(multiprocessing.cpu_count())
+        with multiprocessing.Pool(num_processes) as pool:
             res_dataset = pool.imap_unordered(train_single_dataset, self.datasets.items())
 
         for res in res_dataset:

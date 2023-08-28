@@ -94,14 +94,14 @@ def load_models(selected_models='all', deselected_models=None):
         module = importlib.import_module('models.flatModels.' + module_info.name)
         if deselected_models is not None and module.wrapper.name in deselected_models:
             continue
-        if selected_models in ['all', 'flat'] or module.wrapper.name in selected_models:
+        if 'all' in selected_models or 'flat' in selected_models  or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
 
     for module_info in pkgutil.iter_modules(globalModels.__path__):
         module = importlib.import_module('models.globalModels.' + module_info.name)
         if deselected_models is not None and module.wrapper.name in deselected_models:
             continue
-        if selected_models in ['all', 'global'] or module.wrapper.name in selected_models:
+        if 'all' in selected_models or 'global' in selected_models  or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
     # logger.write(
     #     f'{len(classifiers)} model(s) loaded: {", ".join(c.name for c in classifiers )}', msg_type='subtitle'
