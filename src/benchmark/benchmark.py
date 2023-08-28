@@ -15,7 +15,7 @@ from functools import partial
 import os
 import pkgutil
 import importlib
-from multiprocessing import Pool
+import multiprocessing 
 
 from utilities.logger import Logger
 from utilities.plot import plot
@@ -40,7 +40,7 @@ from statistics import mean
 # TODO: dump Results to disk every three(interval) classifiers in case of training failure
 
 # create logger
-logger = Logger(name='App', log_to_file=True, log_to_console=False)
+logger = Logger(name='App_1', log_to_file=True, log_to_console=False)
 
 class Benchmark:
     def __init__(self, classifiers, datasets, tuning_mode='sample'):
@@ -60,7 +60,9 @@ class Benchmark:
     def _train_single_outer_split(self):
         pass
 
-    def _train(self, inner_cv, inner_metrics, outer_metrics, outer_cv=None, dataset=None, pre_splits=None):
+    def _train(inner_cv, inner_metrics, outer_metrics, outer_cv, is_pre_splits,  dataset):
+        logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
+
         true_labels_test = []
         test_row_ids = []
         res = {}
@@ -71,16 +73,16 @@ class Benchmark:
             params_search_required = True
             pipeline_steps=[]
 
-            if pre_splits is None:
-                X, y, outer_groups, row_ids = dataset
+            if not is_pre_splits:
+                X, y, outer_groups, row_ids = dataset[1]
                 n_splits = outer_cv.get_n_splits(X, y, outer_groups) #TODO: take care of cv method except LeaveOneGroupOut
                 splits = outer_cv.split(X, y, outer_groups)
             else:
-                n_splits = len(pre_splits)
-                splits = pre_splits
+                n_splits = len(dataset[1])
+                splits = dataset[1]
             
             # with Pool(processes=15) as pool:
-            with Pool() as pool:
+            with multiprocessing.Pool() as pool:
                 # print "[0, 1, 4,..., 81]"
                 # print(pool.map(f, range(10)))
                 pass
@@ -88,7 +90,7 @@ class Benchmark:
             # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation
             for fold_idx, (train, test) in enumerate(splits):
                 
-                if pre_splits is None:
+                if not is_pre_splits:
                     X_train, X_test = X[train].astype(np.float32), X[test].astype(np.float32)
                     y_train, y_test = y[train], y[test]
                     inner_groups = outer_groups[train]
@@ -121,18 +123,15 @@ class Benchmark:
                     model_selected.fit(X_train, y_train)
                 # Tune Params
                 else:
-                    if self.tuning_mode.lower() == 'sample':
-                        model_selected = RandomizedSearchCV(
-                            pipeline, 
-                            param_grid, 
-                            cv=inner_cv, 
-                            scoring=inner_metrics, 
-                            n_iter=1 if cfg.debug else 20, # jusify 30
-                            refit=True, 
-                            n_jobs=-1
-                        ) 
-                    else:
-                        model_selected = GridSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, refit=True, n_jobs=-1)
+                    model_selected = RandomizedSearchCV(
+                        pipeline, 
+                        param_grid, 
+                        cv=inner_cv, 
+                        scoring=inner_metrics, 
+                        n_iter=1 if cfg.debug else 20, # jusify 30
+                        refit=True, 
+                        n_jobs=-1
+                    ) 
                     model_selected.fit(X_train, y_train, groups=inner_groups if isinstance(inner_cv, LeaveOneGroupOut) else None)
                 
                 if params_search_required:
@@ -230,7 +229,7 @@ class Benchmark:
             
             logger.write('', msg_type='content')
 
-        return res, true_labels_test, test_row_ids
+        return {dataset[0]: [res, true_labels_test, test_row_ids]}
     
 
     def save(self, dir):
@@ -257,23 +256,24 @@ class Benchmark:
 
         self.results = dict(random_state=random_seed, description=description)
         # Loop over different datasets
-        # for name, path in data_paths.items():
-        for dn, dataset in self.datasets.items():
-            logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
-            # inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
-            # inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
-            inner_cv = LeaveOneGroupOut()
-            outer_cv = LeaveOneGroupOut()
-            if not is_pre_splits:
-                model_results, true_labels_test, test_row_ids = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
-            else:
-                model_results, true_labels_test, test_row_ids = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv,pre_splits=dataset)
+        # inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
+        # inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
+        inner_cv = LeaveOneGroupOut()
+        outer_cv = LeaveOneGroupOut()
+        train_single_dataset = partial(
+            self._train, 
+            inner_cv=inner_cv, 
+            inner_metrics=inner_metrics, 
+            outer_metrics=outer_metrics, 
+            outer_cv=outer_cv,
+            is_pre_splits=is_pre_splits
+            )
 
-            self.results.setdefault('datasets', {}).update({dn: {
-                'model_results': model_results, 
-                'true_labels_test': true_labels_test,
-                'test_row_ids': test_row_ids
-            }})
+        with multiprocessing.Pool() as pool:
+            res_dataset = pool.imap_unordered(train_single_dataset, self.datasets.items())
+
+        for res in res_dataset:
+            self.results.setdefault('datasets', {}).update(res)
             
         # self._save() # dump the predicts
 
