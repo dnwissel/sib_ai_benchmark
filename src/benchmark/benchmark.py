@@ -38,7 +38,7 @@ from statistics import mean
 # TODO: dump Results to disk every three(interval) classifiers in case of training failure
 
 # create logger
-logger = Logger(name='App_1', log_to_file=True, log_to_console=False)
+logger = Logger(name='App', log_to_file=True, log_to_console=False)
 
 class Benchmark:
     def __init__(self, classifiers, datasets, tuning_mode='sample'):
@@ -117,7 +117,7 @@ class Benchmark:
                             param_grid, 
                             cv=inner_cv, 
                             scoring=inner_metrics, 
-                            n_iter=1 if cfg.debug else 10, # jusify 30
+                            n_iter=1 if cfg.debug else 20, # jusify 30
                             refit=True, 
                             n_jobs=-1
                         ) 
