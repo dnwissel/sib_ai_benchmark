@@ -15,6 +15,8 @@ from functools import partial
 import os
 import pkgutil
 import importlib
+from multiprocessing import Pool
+
 from utilities.logger import Logger
 from utilities.plot import plot
 import logging
@@ -42,7 +44,7 @@ logger = Logger(name='App', log_to_file=True, log_to_console=False)
 
 class Benchmark:
     def __init__(self, classifiers, datasets, tuning_mode='sample'):
-        self.__validate_input(tuning_mode)
+        self._validate_input(tuning_mode)
         self.tuning_mode = tuning_mode
         self.classifiers = classifiers
         self.results = None
@@ -50,11 +52,13 @@ class Benchmark:
         self.task_name = None
 
 
-    def __validate_input(self,tuning_mode):
+    def _validate_input(self,tuning_mode):
         tuning_mode_category = ['full', 'sample']
         if tuning_mode.lower() not in tuning_mode_category:
             raise ValueError(f'Available modes are: {", ".join(tuning_mode_category)}')
 
+    def _train_single_outer_split(self):
+        pass
 
     def _train(self, inner_cv, inner_metrics, outer_metrics, outer_cv=None, dataset=None, pre_splits=None):
         true_labels_test = []
@@ -74,6 +78,12 @@ class Benchmark:
             else:
                 n_splits = len(pre_splits)
                 splits = pre_splits
+            
+            # with Pool(processes=15) as pool:
+            with Pool() as pool:
+                # print "[0, 1, 4,..., 81]"
+                # print(pool.map(f, range(10)))
+                pass
 
             # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation
             for fold_idx, (train, test) in enumerate(splits):

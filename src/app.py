@@ -90,10 +90,9 @@ def main():
     # Run benchmark
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
 
-    if deselected_models is None:
-        task_name = exp_name + '_' + '_'.join(model_type)
-    else:
-        task_name = exp_name + '_' + model_type + '_wo_' + '_'.join(deselected_models)
+    task_name = exp_name + '_' + '_'.join(model_type)
+    if deselected_models is not None:
+        task_name = task_name + '_wo_' + '_'.join(deselected_models)
     
     f1_score_macro = partial(f1_score, average='macro')
     f1_score_weighted = partial(f1_score, average='weighted')
