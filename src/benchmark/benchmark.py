@@ -81,8 +81,6 @@ class Benchmark:
             
             # with Pool(processes=15) as pool:
             with Pool() as pool:
-                # print "[0, 1, 4,..., 81]"
-                # print(pool.map(f, range(10)))
                 pass
 
             # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation

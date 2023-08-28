@@ -75,7 +75,6 @@ def main():
     model_type = exp_cfg['model_type'] if args.model_type is None else args.model_type
     classifier_wrappers = dl.load_models(model_type, deselected_models)
 
-    # classifier_wrappers = dl.load_models('LogisticRegression')
     path = exp_cfg['data_path']
     dataloader = exp_cfg['dataloader']
     datasets = dataloader(path)
@@ -90,9 +89,9 @@ def main():
     # Run benchmark
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
 
-    task_name = exp_name + '_' + '_'.join(model_type)
+    task_name = exp_name + '_' + '-'.join(model_type) if isinstance(model_type, list) else model_type
     if deselected_models is not None:
-        task_name = task_name + '_wo_' + '_'.join(deselected_models)
+        task_name = task_name + '_wo_' + '-'.join(deselected_models)
     
     f1_score_macro = partial(f1_score, average='macro')
     f1_score_weighted = partial(f1_score, average='weighted')
