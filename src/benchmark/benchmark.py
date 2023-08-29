@@ -237,7 +237,7 @@ class Benchmark:
 
         # with open(os.path.join(dir, self.task_name), 'w') as file:
         #     json.dump(self.results, file, indent=3, separators=(', ', ': '))
-        with open(os.path.join(dir, self.task_name + '.pkl'), 'wb') as fh:  # Overwrites any existing file.
+        with open(os.path.join(dir, self.task_name + '.pkl'), 'wb') as fh: 
             pickle.dump(self.results, fh, pickle.HIGHEST_PROTOCOL)
     
     
