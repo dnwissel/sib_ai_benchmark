@@ -151,7 +151,7 @@ class MaskBCE(nn.Module):
         # lm_batch = self.loss_mask[self.label_loader[self.bid], :][:,  self.idx_to_eval]
         # print(lm_batch.shape, train_output.shape,target.shape)
         loss = F.binary_cross_entropy_with_logits(train_output[:,self.idx_to_eval], target[:,self.idx_to_eval], reduction='none')
-        loss = lm_batch * loss
+        loss = lm_batch[:,self.idx_to_eval] * loss
         # self.bid = (self.bid + 1) % len(self.label_loader)
         # print(self.bid)
         return loss.sum()

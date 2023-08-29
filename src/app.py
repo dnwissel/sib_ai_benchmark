@@ -89,7 +89,8 @@ def main():
     # Run benchmark
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
 
-    task_name = exp_name + '_' + '-'.join(model_type) if isinstance(model_type, list) else model_type
+    model_type = '-'.join(model_type) if isinstance(model_type, list) else model_type
+    task_name = exp_name + '_' + model_type 
     if deselected_models is not None:
         task_name = task_name + '_wo_' + '-'.join(deselected_models)
     
