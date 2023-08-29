@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
+import pickle
 from functools import partial
 import os
 import pkgutil
@@ -235,8 +235,10 @@ class Benchmark:
         if not os.path.exists(dir):
             os.makedirs(dir)
 
-        with open(os.path.join(dir, self.task_name), 'w') as file:
-            json.dump(self.results, file, indent=3, separators=(', ', ': '))
+        # with open(os.path.join(dir, self.task_name), 'w') as file:
+        #     json.dump(self.results, file, indent=3, separators=(', ', ': '))
+        with open(os.path.join(dir, self.task_name + '.pkl'), 'wb') as fh:  # Overwrites any existing file.
+            pickle.dump(self.results, fh, pickle.HIGHEST_PROTOCOL)
     
     
     def plot(self, dir, metric_name='f1_score_macro'):
