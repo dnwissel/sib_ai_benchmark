@@ -1,7 +1,3 @@
-#################################################################
-#   Hierarchical classification via isotonic regression
-#################################################################
-import sys
 import numpy as np
 import pandas as pd
 
@@ -9,13 +5,13 @@ from sklearn.linear_model import LogisticRegression
 # from sklearn.isotonic import isotonic_regression
 from quadprog import solve_qp
 import networkx as nx
+from models.wrapper import Wrapper
 
-from utilities.hier import get_R
 
-class IsotonicRegressionPost():
+class IsotonicRegressionPost:
     def __init__(
             self,
-            encoder,
+            encoder=None,
             base_learner=LogisticRegression(),
         ):
         self.encoder = encoder
@@ -44,14 +40,15 @@ class IsotonicRegressionPost():
         np.fill_diagonal(G, 2)
 
         b = 0
-        C = self._get_C()
+        C = self._get_C(nodes)
         probas_post = []
         for row in probas:
             sol = solve_qp(G, row * 2, C.T, b)
             probas_post.append(sol[0])
+        return np.array(probas_post)
 
-    def _get_C(self):
-        nodes = self.encoder.G_idx.nodes()
+
+    def _get_C(self, nodes):
         num_nodes = len(nodes)
         C = []
         for i in range(num_nodes):
@@ -63,9 +60,60 @@ class IsotonicRegressionPost():
                 C.append(row)
         return C
     
-    def predict_proba(self):
-        pass
+    def set_encoder(self, encoder):
+        self.encoder = encoder
+
+    def predict_proba(self, X):
+        probas = []
+        for cls in self.trained_classifiers:
+            if isinstance(cls, int):
+                col = np.repeat([cls], X.shape[0])
+            else:
+                col = cls.predict_proba(X)
+            probas.append(col)
+        return np.array(probas).T
+
 
     def predict(self, X):
-        pass
+        probas = self.predict_proba(X)
+        return self._inference(probas)
+
+
+    def _inference(self, probas):
+        predicted = probas > 0.5
+        y_pred = np.zeros(predicted.shape[0])
+        for row_idx, row in enumerate(predicted):
+            counts = row[self.encoder.label_idx].sum()
+            if counts < 2:
+                idx = np.argmax(probas[row_idx, self.encoder.label_idx])
+                y_pred[row_idx] = self.encoder.label_idx[idx]
+            else:
+                labels = self.encoder.label_idx[row[self.encoder.label_idx].tolist()]
+                # if counts == 0:
+                #     labels = self.encoder.label_idx
+                mask = np.argsort(probas[row_idx, labels])
+                # print(mask)
+                labels_sorted = [labels[i] for i in mask]
+                preds = []
+                while len(labels_sorted) != 0:
+                    ancestors = nx.ancestors(self.encoder.G_idx, labels_sorted[0])
+                    path = [labels_sorted[0]]
+                    preds.append(labels_sorted[0])
+                    if ancestors is not None:
+                        path += list(ancestors)
+                    labels_sorted = [i for i in labels_sorted if i not in path]
+                idx = np.argmax(probas[row_idx, preds])
+                y_pred[row_idx] = preds[idx]
+        return y_pred
         
+params = dict(
+        name='IR',
+        model=IsotonicRegressionPost(),
+)
+
+# Please don't change this line
+wrapper = Wrapper(**params)
+
+
+if __name__ == "__main__":
+    pass
