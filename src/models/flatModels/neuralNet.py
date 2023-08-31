@@ -7,14 +7,17 @@ from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
-import numpy as np
 from config import cfg
+import pandas as pd
+import numpy as np
+from math import ceil
 
 from models.wrapper import WrapperNN
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
+from utilities.customizedValidSplit import CustomizedValidSplit
 
 
 class NeuralNet(nn.Module):
@@ -78,11 +81,11 @@ params = dict(
         name='NeuralNet',
         model=NeuralNetClassifier(
             module=NeuralNet,
-            max_epochs=1 if cfg.debug else 30,
+            max_epochs=1 if cfg.debug else 40,
             criterion=nn.CrossEntropyLoss(),
-            # train_split=ValidSplit(cv=0.1, stratified=False, random_state=5), # set later In case of intraDataset 
+            train_split=CustomizedValidSplit(cv=0.15, stratified=True, random_state=None), # set later In case of intraDataset 
             verbose=0,
-            # callbacks=[EarlyStopping(patience=3)], 
+            callbacks=[EarlyStopping(patience=3)], 
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
