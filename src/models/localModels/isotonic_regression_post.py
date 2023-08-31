@@ -37,13 +37,13 @@ class IsotonicRegressionPost:
         nodes = self.encoder.G_idx.nodes()
         num_nodes = len(nodes)
         G = np.zeros((num_nodes, num_nodes))
-        np.fill_diagonal(G, 2)
+        np.fill_diagonal(G, 1)
 
-        b = 0
         C = self._get_C(nodes)
+        b = np.zeros(C.shape[0])
         probas_post = []
         for row in probas:
-            sol = solve_qp(G, row * 2, C.T, b)
+            sol = solve_qp(G, row, C.T, b)
             probas_post.append(sol[0])
         return np.array(probas_post)
 
