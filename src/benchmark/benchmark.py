@@ -1,4 +1,4 @@
-from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut, KFold
+from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut, KFold, StratifiedGroupKFold
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.preprocessing import OrdinalEncoder
@@ -262,8 +262,13 @@ class Benchmark:
             logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
             # inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
             # inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
-            inner_cv = LeaveOneGroupOut()
             outer_cv = LeaveOneGroupOut()
+
+            if dn in ['body', 'head', 'antenna']:
+                inner_cv = StratifiedGroupKFold(n_splits=4)
+            else:
+                inner_cv = LeaveOneGroupOut()
+                
             if not is_pre_splits:
                 model_results, true_labels_test, test_row_ids = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
             else:
