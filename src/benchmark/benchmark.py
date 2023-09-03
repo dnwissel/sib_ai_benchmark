@@ -1,4 +1,4 @@
-from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut, KFold, StratifiedGroupKFold
+from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut, KFold, StratifiedGroupKFold, GroupKFold
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.preprocessing import OrdinalEncoder
@@ -80,8 +80,8 @@ class Benchmark:
                 splits = pre_splits
             
             # with Pool(processes=15) as pool:
-            with Pool() as pool:
-                pass
+            # with Pool() as pool:
+            #     pass
 
             # Nested CV: Perform grid search with outer(model selection) and inner(parameter tuning) cross-validation
             for fold_idx, (train, test) in enumerate(splits):
@@ -125,13 +125,14 @@ class Benchmark:
                             param_grid, 
                             cv=inner_cv, 
                             scoring=inner_metrics, 
-                            n_iter=1 if cfg.debug else 20, # jusify 30
+                            n_iter=1 if cfg.debug else 20, 
                             refit=True, 
                             n_jobs=-1
                         ) 
                     else:
                         model_selected = GridSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, refit=True, n_jobs=-1)
-                    model_selected.fit(X_train, y_train, groups=inner_groups if isinstance(inner_cv, LeaveOneGroupOut) else None)
+                    group_required = isinstance(inner_cv, LeaveOneGroupOut) or isinstance(inner_cv, GroupKFold) or isinstance(inner_cv, StratifiedGroupKFold)
+                    model_selected.fit(X_train, y_train, groups=inner_groups if group_required else None)
                 
                 if params_search_required:
                     best_params.append(model_selected.best_params_)
@@ -266,6 +267,8 @@ class Benchmark:
 
             if dn in ['body', 'head', 'antenna']:
                 inner_cv = StratifiedGroupKFold(n_splits=4)
+                # inner_cv = GroupKFold(n_splits=4)
+                print(dn)
             else:
                 inner_cv = LeaveOneGroupOut()
                 
