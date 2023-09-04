@@ -4,6 +4,7 @@ numpy
 networkx
 pandas
 pre-commit
+quadprog
 scanpy
 scipy
 scikit-learn

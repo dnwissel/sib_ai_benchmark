@@ -9,8 +9,6 @@ import numpy as np
 import torch
 
 
-
-
 class Wrapper:
     def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
         # TODO: Move sample to app.Define sampling rate
@@ -263,3 +261,35 @@ class WrapperHierCS(Wrapper):
             net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
             # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
             return proba, net.forward(pl_pp.transform(X))
+
+
+class WrapperLocal(Wrapper):
+
+        def init_model(self, X, train_y_label, test_y_label):
+            # Define pipeline and param_grid
+            param_grid = {}
+            if self.tuning_space:
+                for key, value in self.tuning_space.items():
+                    param_grid[self.name + '__' + key] = value
+
+            if not self.preprocessing_steps:
+                pipeline = Pipeline([(self.name, self.model)])
+            else:
+                pipeline = Pipeline(self.preprocessing_steps + [(self.name, self.model)])
+                
+                if self.preprocessing_params:
+                    param_grid.update(self.preprocessing_params)
+
+            # Ecode y to idx in graph
+            self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
+            en = Encoder(self.g_global, self.roots_label)
+
+            en = en.fit(train_y_label)
+            y_train = np.array(list(map(en.node_map.get, train_y_label)))
+            y_test = []
+            for lable in test_y_label:
+                 y_test.append(en.node_map.get(lable, -1))
+            y_test = np.array(y_test)
+            
+            self.model.set_encoder(en)
+            return pipeline, param_grid, y_train, y_test

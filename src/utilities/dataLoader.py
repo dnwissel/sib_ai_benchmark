@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 
-from models import flatModels, globalModels
+from models import flatModels, globalModels, localModels
 
 
 def load_pre_splits(path, batch_min=3, is_row_id=True):
@@ -102,6 +102,13 @@ def load_models(selected_models='all', deselected_models=None):
         if deselected_models is not None and module.wrapper.name in deselected_models:
             continue
         if 'all' in selected_models or 'global' in selected_models  or module.wrapper.name in selected_models:
+            classifiers.append(module.wrapper)
+
+    for module_info in pkgutil.iter_modules(localModels.__path__):
+        module = importlib.import_module('models.localModels.' + module_info.name)
+        if deselected_models is not None and module.wrapper.name in deselected_models:
+            continue
+        if 'all' in selected_models or 'local' in selected_models  or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
     # logger.write(
     #     f'{len(classifiers)} model(s) loaded: {", ".join(c.name for c in classifiers )}', msg_type='subtitle'
