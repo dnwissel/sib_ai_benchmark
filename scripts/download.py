@@ -3,12 +3,17 @@ import zipfile
 import os
 import shutil
 
+
 def main():
-    
+
     folder_id = {
         "embeddings": "1zBQmWU-yTmLVWCjmy7Ov0E-TKJTWty2D",
         "raw_data_per_tissue": "1N7FJObP4aKtabsOpgX_OIMSwpj_e95u3"
     } 
+    file_id = {
+        "scanvi_bcm_head": "1fr-qgtJbN2_HCs9kZt5RulrOF6ZzXzS3",
+        "scanvi_bcm_body": "1LolSyBQR4b3PG8nbIrekffhCqoGHkflR",
+    }
 
 
     def download_folder(fn):
@@ -27,8 +32,18 @@ def main():
         os.rmdir(f'data-raw/{fn}')
 
 
-    download_folder("embeddings")
+    def download_file(fn):
+        id = file_id[fn]
+        gdown.download(id=id, quiet=False, use_cookies=False, output=f"data-raw/{fn}.zip")
+        with zipfile.ZipFile(f"data-raw/{fn}.zip") as file:
+            file.extractall(f"data-raw/{fn}")
+        os.remove(f"data-raw/{fn}.zip")
+
+
+    # download_folder("embeddings")
     # download_folder("raw_data_per_tissue")
+    download_file("scanvi_bcm_head")
+    download_file("scanvi_bcm_body")
 
 if __name__ == "__main__":
     main()
