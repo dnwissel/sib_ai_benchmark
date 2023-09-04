@@ -127,10 +127,11 @@ class Benchmark:
                             scoring=inner_metrics, 
                             n_iter=1 if cfg.debug else 15, 
                             refit=True, 
+                            random_state=15, 
                             n_jobs=-1
                         ) 
                     else:
-                        model_selected = GridSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, refit=True, n_jobs=-1)
+                        model_selected = GridSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, refit=True, random_state=15,  n_jobs=-1)
                     group_required = isinstance(inner_cv, LeaveOneGroupOut) or isinstance(inner_cv, GroupKFold) or isinstance(inner_cv, StratifiedGroupKFold)
                     model_selected.fit(X_train, y_train, groups=inner_groups if group_required else None)
                 
