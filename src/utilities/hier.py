@@ -83,23 +83,23 @@ class Encoder:
         return Y
 
     def get_R(self):
-    # Compute matrix of ancestors R
-    # Given n classes, R is an (n x n) matrix where R_ij = 1 if class i is descendant of class j
-    nodes = self.G_idx.nodes()
-    num_nodes = len(nodes)
-    R = np.zeros((num_nodes, num_nodes))
-    np.fill_diagonal(R, 1)
+        # Compute matrix of ancestors R
+        # Given n classes, R is an (n x n) matrix where R_ij = 1 if class i is descendant of class j
+        nodes = self.G_idx.nodes()
+        num_nodes = len(nodes)
+        R = np.zeros((num_nodes, num_nodes))
+        np.fill_diagonal(R, 1)
 
-    for i in range(num_nodes):
-        ancestors = list(nx.ancestors(self.G_idx, i))
-        if ancestors:
-            R[i, ancestors] = 1
+        for i in range(num_nodes):
+            ancestors = list(nx.ancestors(self.G_idx, i))
+            if ancestors:
+                R[i, ancestors] = 1
 
-    R = torch.tensor(R)
-    #Transpose to get the descendants for each node
-    R = R.transpose(1, 0)
-    R = R.unsqueeze(0)
-    return R
+        R = torch.tensor(R)
+        #Transpose to get the descendants for each node
+        R = R.transpose(1, 0)
+        R = R.unsqueeze(0)
+        return R
 
 
 def get_R(en):
