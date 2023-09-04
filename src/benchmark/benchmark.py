@@ -267,6 +267,7 @@ class Benchmark:
 
             if dn in ['body', 'head', 'antenna']:
                 inner_cv = StratifiedGroupKFold(n_splits=4)
+                outer_cv = StratifiedGroupKFold(n_splits=5)
                 # inner_cv = GroupKFold(n_splits=4)
                 # print(dn)
             else:
