@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
+from pathlib import Path
+import os
+import pickle
 
 
 def subplot(data, ax, info):
@@ -20,9 +23,10 @@ def subplot(data, ax, info):
 
     ax.set(
         axisbelow=True,  # Hide the grid behind plot objects
-        title=f'Tissue {info["tissue_name"]}',
-        xlabel='Model',
-        ylabel=info['metric_name']
+        title=f'{info["tissue_name"].upper()}',
+        xlabel=None,
+        # xlabel='Model',
+        ylabel=info['metric_name'].upper()
     )
     # Now fill the boxes with desired colors
     box_colors = ['darkkhaki', 'royalblue']
@@ -54,7 +58,7 @@ def subplot(data, ax, info):
 
     # Set the axes ranges and axes labels
     ax.set_xlim(0.5, num_boxes + 0.5)
-    top = 1.08
+    top = 1.15
     bottom = -0.05
     ax.set_ylim(bottom, top)
     ax.set_xticklabels(info['labels'], rotation=45, fontsize=8)
@@ -64,11 +68,11 @@ def subplot(data, ax, info):
     # X-axis tick labels with the sample medians to aid in comparison
     # (just use two decimal places of precision)
     pos = np.arange(num_boxes) + 1
-    upper_labels = [str(round(s, 2)) for s in medians]
+    upper_labels = [str(round(s, 4)) for s in medians]
     weights = ['bold', 'semibold']
     for tick, label in zip(range(num_boxes), ax.get_xticklabels()):
         k = tick % 2
-        ax.text(pos[tick], .95, upper_labels[tick],
+        ax.text(pos[tick], .90, upper_labels[tick],
                 transform=ax.get_xaxis_transform(),
                 horizontalalignment='center', size='x-small',
                 weight=weights[k], color=box_colors[k])
@@ -90,7 +94,9 @@ def plot(results, metric_name, path, ncols=2):
     # Prepare data
     data = []
     info = {}
+
     tissue_names = list(results['datasets'].keys())
+    tissue_names = sorted(tissue_names)
     model_names = results['datasets'][tissue_names[0]]['model_results'].keys()
 
     info['labels'] = list(model_names)
@@ -131,59 +137,17 @@ def plot(results, metric_name, path, ncols=2):
 
 
     # configure x/y labels
-    for ax in axs.flat:
-        ax.label_outer()
-    
+    # for ax in axs.flat:
+    #     ax.label_outer()
+    plt.subplots_adjust(wspace=0.5, hspace=1)
     plt.savefig(path)
     # plt.show()
 
 
 if __name__ == "__main__":
-    results = {'datasets': {
-                        'head': 
-                        {'model_results': 
-                            {'nn': 
-                                {'F1': [0.95, 0.86, 0.63, 1.0]
-                                },
-                            'LR': 
-                                {'F1': [0.95, 0.86, 0.63, 1.0]
-                                }
-                            }
-                            },
-                        
-                        'antenna': 
-                        {'model_results': 
-                            {'nn': 
-                                {'F1': [0.95, 0.86, 0.63, 1.0]
-                                },
-                            'LR': 
-                                {'F1': [0.95, 0.86, 0.63, 1.0]
-                                }
-                        }
-                            },
-                        'head1': 
-                        {'model_results': 
-                            {'nn': 
-                                {'F1': [0.95, 0.86, 0.63, 1.0]
-                                },
-                            'LR': 
-                                {'F1': [0.95, 0.86, 0.63, 1.0]
-                                }
-                            },
-                        
-                        'antenna1': 
-                        {'model_results': 
-                            {'nn': 
-                                {'F1': [0.95, 0.86, 0.63, 1.0]
-                                },
-                            
-                            'LR': 
-                                {'F1': [0.95, 0.86, 0.63, 1.0]
-                                }
-                            }
-                        }
-                        }}        
-                }
-
-    metric_name = 'F1'
+    parent_path = Path(__file__).parents[2]
+    path_res = os.path.join(parent_path, "results/")
+    with open(path_res + '/scanvi_bcm_flat_wo_NeuralNet_done', 'rb') as fh:
+        results = pickle.load(fh)
+    metric_name = 'f1_score_macro'
     plot(results, metric_name, 'test')
