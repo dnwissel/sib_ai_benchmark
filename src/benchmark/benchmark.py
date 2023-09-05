@@ -127,6 +127,7 @@ class Benchmark:
                             scoring=inner_metrics, 
                             n_iter=1 if cfg.debug else 15, 
                             refit=True, 
+                            random_state=15, 
                             n_jobs=-1
                         ) 
                     else:
