@@ -17,65 +17,16 @@ from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
-class NeuralNetClassifierHier(NeuralNetClassifier):
-
-    def __init__(
-            self,
-            module,
-            *args,
-            criterion=torch.nn.NLLLoss,
-            train_split=ValidSplit(5, stratified=True),
-            classes=None,
-            **kwargs
-    ):
-        super(NeuralNetClassifierHier, self).__init__(
-            module,
-            *args,
-            criterion=criterion,
-            train_split=train_split,
-            **kwargs
-        )
-        # self.classes = classes
-    
-    def fit_loop(self, X, y=None, epochs=None, **fit_params): 
-        # y = self.module.en.transform(y)  
-        self.check_data(X, y)
-        self.check_training_readiness()
-        epochs = epochs if epochs is not None else self.max_epochs
-
-        dataset_train, dataset_valid = self.get_split_datasets(
-            X, y, **fit_params)
-        on_epoch_kwargs = {
-            'dataset_train': dataset_train,
-            'dataset_valid': dataset_valid,
-        }
-        iterator_train = self.get_iterator(dataset_train, training=True)
-        iterator_valid = None
-        if dataset_valid is not None:
-            iterator_valid = self.get_iterator(dataset_valid, training=False)
-
-        for _ in range(epochs):
-            self.notify('on_epoch_begin', **on_epoch_kwargs)
-
-            self.run_single_epoch(iterator_train, training=True, prefix="train",
-                                  step_fn=self.train_step, **fit_params)
-
-            self.run_single_epoch(iterator_valid, training=False, prefix="valid",
-                                  step_fn=self.validation_step, **fit_params)
-
-            self.notify("on_epoch_end", **on_epoch_kwargs)
-        return self
-
+class NeuralNetClassifierHier_1(NeuralNetClassifier):
 
     def predict(self, X):
         output = self.forward(X)
         constrained_out = get_constr_out(output, self.module.R)
-        preds = self._inference(constrained_out)
+        preds = self._inference(constrained_out.to('cpu'))
         return preds
     
 
     def _inference(self, constrained_output):
-        constrained_output = constrained_output.to('cpu')
         predicted = constrained_output.data > 0.5
         y_pred = np.zeros(predicted.shape[0])
         for row_idx, row in enumerate(predicted):
@@ -209,7 +160,7 @@ tuning_space={
                 'module__dor_hidden': uniform(0, 0.5)
 }
 
-model=NeuralNetClassifierHier(
+model=NeuralNetClassifierHier_1(
             module=C_HMCNN,
             # max_epochs=30,
             max_epochs=1 if cfg.debug else 30,

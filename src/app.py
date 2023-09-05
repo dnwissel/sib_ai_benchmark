@@ -58,19 +58,26 @@ def main():
     )
 
     parser.add_argument(
-        '-d',
+        '-r',
         "--deselected_models",
         nargs='+',
         type=str,
         default=None,
-        help="model names, separate by space"
+        help="Exclude models from running; model names, separate by space"
     )
 
+    parser.add_argument(
+        '-d',
+        "--debug",
+        action='store_true',
+        help="Debug mode"
+    )
     args = parser.parse_args()
 
     # Load data
     exp_name = args.experiment_name 
     deselected_models = args.deselected_models
+    cfg.debug = args.debug
     exp_cfg = cfg.experiments[exp_name]
     model_type = exp_cfg['model_type'] if args.model_type is None else args.model_type
     classifier_wrappers = dl.load_models(model_type, deselected_models)
