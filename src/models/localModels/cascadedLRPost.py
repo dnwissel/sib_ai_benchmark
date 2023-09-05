@@ -36,7 +36,7 @@ class CascadedLRPost:
             self.trained_classifiers[idx] = cls
 
     def fit_LR(self, probas):
-        R = self.encoder.get_R()
+        D = self.encoder.get_R(tensor=False).T
         self.LR_cls = [] # train for each node
         n_sample = probas.shape(0)
         n_node = probas.shape(1)
@@ -50,7 +50,7 @@ class CascadedLRPost:
             elif len(unique_node_y) == 1:
                 cls = int(unique_node_y[0])
             else:
-                mask = R[node, :]
+                mask = D[node, :]
                 anc_probas = probas[:, mask]
                 cls = LR.fit(anc_probas, node_y)
             self.LR_cls[node] = cls
