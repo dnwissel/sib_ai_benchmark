@@ -87,12 +87,10 @@ class MaskBCE(nn.Module):
 
         #Mask Loss
         lm_batch = self.loss_mask[target]
-        target = self.en.transform(target)
+        target = self.en.transform(target.numpy())
         target = target.astype(np.float32)
         target = torch.from_numpy(target).to(device)
 
-        # lm_batch = self.loss_mask[self.label_loader[self.bid], :][:,  self.idx_to_eval]
-        # print(lm_batch.shape, train_output.shape,target.shape)
         loss = F.binary_cross_entropy_with_logits(train_output[:,self.idx_to_eval], target[:,self.idx_to_eval], reduction='none')
         loss = lm_batch[:,self.idx_to_eval] * loss
         # self.bid = (self.bid + 1) % len(self.label_loader)
@@ -152,16 +150,20 @@ device = (
 
 
 tuning_space={
-                'lr': loguniform(1e-3, 1e0),
-                'batch_size': (16 * np.arange(1,8)).tolist(), 
+                'lr': loguniform(1e-4, 1e-3),
+                # 'batch_size': (16 * np.arange(1,8)).tolist(),
+                # 'batch_size': (16 * np.arange(1,4)).tolist(),
+                'batch_size': [16, 32],
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
+                'optimizer__weight_decay': [1e-5, 3e-4],
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
-                'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                'module__nonlin': [nn.ReLU],
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
                 'module__num_hidden_layers': [1],
                 # 'module__dor_input': uniform(0, 0.3),
-                'module__neuron_power': range(8, 13),
+                'module__neuron_power': range(9, 12),
                 'module__dor_input': [0],
                 'module__dor_hidden': uniform(0, 1)
 }

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from utilities import dataLoader  as dl
+from utilities.toDense import ToDense
 from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
@@ -38,11 +39,11 @@ experiments = {
     
     # Only do filtering
     'pf_': {
-        'data_path': path_pf_,
+        'data_path': path_pf_ if not debug else path_debug,
         'dataloader': dl.load_tissue_raw,
         'is_pre_splits': False,
         'model_type': 'flat',
-        'ppSteps': [('StandardScaler', StandardScaler(with_mean=False))],
+        'ppSteps': [('ToDense', ToDense()),('StandardScaler', StandardScaler(with_mean=True))],
         'ppParams': None,
     },
     

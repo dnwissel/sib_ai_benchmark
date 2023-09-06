@@ -166,6 +166,7 @@ class WrapperHier(Wrapper):
                  y_test.append(en.node_map.get(lable, -1))
             y_test = np.array(y_test)
 
+            # print(y_train, y_test)
             nodes = en.G_idx.nodes()
             R = get_R(en)
             idx_to_eval = list(set(nodes) - set(en.roots_idx))

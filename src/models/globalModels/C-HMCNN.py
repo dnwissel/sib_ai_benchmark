@@ -76,7 +76,8 @@ class MCLoss(nn.Module):
         self.en = en
 
     def forward(self, output, target):
-        target = self.en.transform(target)
+        # print(target)
+        target = self.en.transform(target.numpy())
         target = target.astype(np.float32)
         target = torch.from_numpy(target).to(device)
 
@@ -144,13 +145,13 @@ device = (
 
 
 tuning_space={
-                'lr': loguniform(1e-3, 1e-2),
+                'lr': loguniform(1e-4, 1e-3),
                 # 'batch_size': (16 * np.arange(1,8)).tolist(),
                 # 'batch_size': (16 * np.arange(1,4)).tolist(),
-                'batch_size': [32],
+                'batch_size': [16, 32],
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
-                'optimizer__weight_decay': [1e-4, 3e-4],
+                'optimizer__weight_decay': [1e-5, 3e-4],
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
                 # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
                 'module__nonlin': [nn.ReLU],
@@ -159,7 +160,7 @@ tuning_space={
                 # 'module__dor_input': uniform(0, 0.3),
                 'module__neuron_power': range(9, 12),
                 'module__dor_input': [0],
-                'module__dor_hidden': uniform(0, 0.5)
+                'module__dor_hidden': uniform(0, 1)
 }
 
 model=NeuralNetClassifierHier_1(
