@@ -166,7 +166,7 @@ tuning_space={
                 'module__dor_hidden': uniform(0, 1)
 }
 
-model=NeuralNetClassifierHier2(
+model=NeuralNetClassifierHier_2(
             module=ConditionalSigmoid,
             # max_epochs=30,
             max_epochs=1 if cfg.debug else 30,

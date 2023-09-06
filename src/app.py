@@ -77,7 +77,7 @@ def main():
     # Load data
     exp_name = args.experiment_name 
     deselected_models = args.deselected_models
-    cfg.debug = args.debug
+    # cfg.debug = args.debug #TODO 
     exp_cfg = cfg.experiments[exp_name]
     model_type = exp_cfg['model_type'] if args.model_type is None else args.model_type
     classifier_wrappers = dl.load_models(model_type, deselected_models)
@@ -106,7 +106,6 @@ def main():
 
     params = dict(
         # inner_metrics='accuracy',
-        # inner_metrics=make_scorer(debug),
         inner_metrics=make_scorer(f1_score_macro),
         outer_metrics={
             'accuracy': accuracy_score, 
