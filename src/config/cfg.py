@@ -17,7 +17,7 @@ path_scanvi_ = os.path.join(parent_path, "data-raw/scanvi_")
 
 path_pca_ = os.path.join(parent_path, "data-raw/pca_")
 
-path_pf_ = os.path.join(parent_path, "data-raw/pf_")
+path_pf_ = os.path.join(parent_path, "data-raw/pca_")
 
 path_union = os.path.join(parent_path, "data-raw/data_unionized.h5ad")
 path_hier = os.path.join(parent_path, "data-raw/sib_cell_type_hierarchy.tsv")
