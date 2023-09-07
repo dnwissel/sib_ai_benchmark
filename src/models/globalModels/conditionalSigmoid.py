@@ -65,7 +65,7 @@ class MaskBCE(nn.Module):
     def __init__(self, en, loss_mask, idx_to_eval):
         super().__init__()
         self.en = en
-        self.loss_mask = loss_mask
+        self.loss_mask = loss_mask.to(device)
         # self.R = R
         self.idx_to_eval = idx_to_eval
         # self.criterion = F.binary_cross_entropy()
@@ -80,8 +80,8 @@ class MaskBCE(nn.Module):
         train_output = output
 
         #Mask Loss
-        lm_batch = self.loss_mask[target].to(device)
-        target = self.en.transform(target.numpy())
+        lm_batch = self.loss_mask[target]
+        target = self.en.transform(target.cpu().numpy())
         target = target.astype(np.float32)
         target = torch.from_numpy(target).to(device)
 
