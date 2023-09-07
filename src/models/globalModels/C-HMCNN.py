@@ -63,7 +63,7 @@ def get_constr_out(x, R):
     c_out = x.double()
     c_out = c_out.unsqueeze(1)
     c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
-    R_batch = R.expand(len(x),R.shape[1], R.shape[1])
+    R_batch = R.expand(len(x),R.shape[1], R.shape[1]).to(device)
     final_out, _ = torch.max(R_batch*c_out.double(), dim = 2)
     return final_out
 
@@ -78,7 +78,7 @@ class MCLoss(nn.Module):
 
     def forward(self, output, target):
         # print(target)
-        target = self.en.transform(target.numpy())
+        target = self.en.transform(target.cpu().numpy())
         target = target.astype(np.double)
         target = torch.from_numpy(target).to(device)
 
