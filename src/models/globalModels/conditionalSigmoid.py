@@ -80,7 +80,7 @@ class MaskBCE(nn.Module):
         train_output = output
 
         #Mask Loss
-        lm_batch = self.loss_mask[target]
+        lm_batch = self.loss_mask[target].to(device)
         target = self.en.transform(target.numpy())
         target = target.astype(np.float32)
         target = torch.from_numpy(target).to(device)
