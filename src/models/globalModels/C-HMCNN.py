@@ -21,7 +21,7 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
 
     def predict(self, X):
         output = self.forward(X)
-        constrained_out = get_constr_out(output, self.module.R)
+        constrained_out = get_constr_out(output, self.module.en.get_R())
         preds = self._inference(constrained_out.to('cpu'))
         return preds
 
@@ -59,6 +59,7 @@ def get_constr_out(x, R):
     # if type(x) is np.ndarray:
     #     print(x)
     
+    x = torch.sigmoid(x)
     c_out = x.double()
     c_out = c_out.unsqueeze(1)
     c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
@@ -68,22 +69,22 @@ def get_constr_out(x, R):
 
 
 class MCLoss(nn.Module):
-    def __init__(self, en, R, idx_to_eval):
+    def __init__(self, en, idx_to_eval):
         super().__init__()
-        self.R = R
         self.idx_to_eval = idx_to_eval
-        self.criterion = nn.BCEWithLogitsLoss()
+        # self.criterion = nn.BCEWithLogitsLoss()
+        self.criterion = nn.BCELoss()
         self.en = en
 
     def forward(self, output, target):
         # print(target)
         target = self.en.transform(target.numpy())
-        target = target.astype(np.float32)
+        target = target.astype(np.double)
         target = torch.from_numpy(target).to(device)
 
-        constr_output = get_constr_out(output, self.R)
+        constr_output = get_constr_out(output, self.en.get_R())
         train_output = target*output.double()
-        train_output = get_constr_out(train_output, self.R)
+        train_output = get_constr_out(train_output, self.en.get_R())
         train_output = (1-target)*constr_output.double() + target*train_output
 
         #MCLoss
@@ -95,12 +96,11 @@ class MCLoss(nn.Module):
 
 
 class C_HMCNN(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en,  R):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en):
         super().__init__()
         # self.module.en = en
         C_HMCNN.en = en
         # self.R = R
-        C_HMCNN.R = R
 
         layers = []
         # fixed_neuron_num = round(neuron_power * dim_in) - round(neuron_power * dim_in) % 16
@@ -146,12 +146,10 @@ device = (
 
 tuning_space={
                 'lr': loguniform(1e-4, 1e-3),
-                # 'batch_size': (16 * np.arange(1,8)).tolist(),
-                # 'batch_size': (16 * np.arange(1,4)).tolist(),
-                'batch_size': [16, 32],
+                'batch_size': [4, 16, 32],
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
-                'optimizer__weight_decay': [1e-5, 3e-4],
+                'optimizer__weight_decay': loguniform(1e-5, 1e-4),
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
                 # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
                 'module__nonlin': [nn.ReLU],

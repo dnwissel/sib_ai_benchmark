@@ -45,8 +45,8 @@ class Encoder:
         self.label_idx = np.array(list(map( self.node_map.get, y.unique())))
 
         for n in self.G_idx.nodes:
-            self.predecessor_dict[n] = self.G_idx.predecessors(n)
-            self.successor_dict[n] = self.G_idx.successors(n)
+            self.predecessor_dict[n] = list(self.G_idx.predecessors(n))
+            self.successor_dict[n] = list(self.G_idx.successors(n))
 
         return self
 
@@ -102,7 +102,7 @@ class Encoder:
 
 def get_R(en):
     # Compute matrix of ancestors R
-    # Given n classes, R is an (n x n) matrix where R_ij = 1 if class i is descendant of class j
+    # Given n classes, R is an (n x n) matrix where R_ij = 1 if class i is ancestor of class j
     nodes = en.G_idx.nodes()
     num_nodes = len(nodes)
     R = np.zeros((num_nodes, num_nodes))

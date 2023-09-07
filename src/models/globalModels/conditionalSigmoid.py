@@ -22,49 +22,43 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
 
     def predict(self, X):
         output = self.forward(X)
-        constrained_out = get_constr_out(output, self.module.R)
-        preds = self._inference(constrained_out.to('cpu'))
+        probas = torch.sigmoid(output) # TODO proba
+        preds = self._inference(probas.to('cpu').data)
         return preds
     
 
-    def _lhs(self, node, en, row, memo):
+    def _lhs_dp(self, node, en, row, memo):
         value = memo[node]
         if value != -1:
             return value
-        s_prime_pos = list(map(partial(self._lhs, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
-        lh_children = torch.prod(1 -  row[list(en.successor_dict[node])])
-        lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos))) * lh_children
+        s_prime_pos = list(map(partial(self._lhs_dp, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
+        lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
         memo[node] = lh
         return memo[node]
 
+    def _lhs(self, node, en, row, memo):
+        value = memo[node]
+        if value == 1:
+            return value
+        s_prime_pos = list(map(partial(self._lhs, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
+        lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
+        # memo[node] = lh
+        return lh
 
-    def _inference(self, constrained_output):
-        y_pred = np.zeros(constrained_output.shape[0])
-        for row_idx, row in enumerate(constrained_output.data):
-            memo = np.zeros(self.module.R.shape[1]) - 1
+    def _inference(self, probas):
+        y_pred = np.zeros(probas.shape[0])
+        for row_idx, row in enumerate(probas.data):
+            memo = np.zeros(len(self.module.en.G_idx.nodes())) - 1
             for root in self.module.en.roots_idx:
                 memo[root] = 1
 
             lhs = np.zeros(len(self.module.en.label_idx))
             for idx, label in enumerate(self.module.en.label_idx):
-                lh_ = self._lhs(label, self.module.en, row, memo)
-                lhs[idx] = lh_
+                lh_ = self._lhs_dp(label, self.module.en, row, memo)
+                lh_children = torch.prod(1 -  row[list(self.module.en.successor_dict[label])])
+                lhs[idx] = lh_ * lh_children
             y_pred[row_idx] = self.module.en.label_idx[np.argmax(lhs)]
         return y_pred
-
-
-def get_constr_out(x, R):
-    """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
-    # print(type(x))
-    if type(x) is np.ndarray:
-        print(x)
-    
-    c_out = x.double()
-    c_out = c_out.unsqueeze(1)
-    c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
-    R_batch = R.expand(len(x),R.shape[1], R.shape[1])
-    final_out, _ = torch.max(R_batch*c_out.double(), dim = 2)
-    return final_out
 
 
 class MaskBCE(nn.Module):
@@ -91,20 +85,24 @@ class MaskBCE(nn.Module):
         target = target.astype(np.float32)
         target = torch.from_numpy(target).to(device)
 
+        # #Mask target
+        # lm_batch = self.loss_mask[target]
+        # target = self.en.transform(target.numpy())
+        # target = target.astype(np.float32)
+        # target = np.where(lm_batch, target, 1)
+        # target = torch.from_numpy(target).to(device)
+
         loss = F.binary_cross_entropy_with_logits(train_output[:,self.idx_to_eval], target[:,self.idx_to_eval], reduction='none')
         loss = lm_batch[:,self.idx_to_eval] * loss
-        # self.bid = (self.bid + 1) % len(self.label_loader)
-        # print(self.bid)
         return loss.sum()
     
 
 class ConditionalSigmoid(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en,  R):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en):
         super().__init__()
         # self.module.en = en
         ConditionalSigmoid.en = en
         # self.R = R
-        ConditionalSigmoid.R = R
 
         layers = []
         # fixed_neuron_num = round(neuron_power * dim_in) - round(neuron_power * dim_in) % 16
@@ -151,12 +149,10 @@ device = (
 
 tuning_space={
                 'lr': loguniform(1e-4, 1e-3),
-                # 'batch_size': (16 * np.arange(1,8)).tolist(),
-                # 'batch_size': (16 * np.arange(1,4)).tolist(),
-                'batch_size': [16, 32],
+                'batch_size': [4, 16, 32],
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
-                'optimizer__weight_decay': [1e-5, 3e-4],
+                'optimizer__weight_decay': loguniform(1e-5, 1e-4),
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
                 # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
                 'module__nonlin': [nn.ReLU],
