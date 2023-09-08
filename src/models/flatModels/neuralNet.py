@@ -7,14 +7,17 @@ from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
-import numpy as np
 from config import cfg
+import pandas as pd
+import numpy as np
+from math import ceil
 
 from models.wrapper import WrapperNN
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
+from utilities.customizedValidSplit import CustomizedValidSplit
 
 
 class NeuralNet(nn.Module):
@@ -59,9 +62,11 @@ device = (
 tuning_space={
                 'lr': loguniform(1e-3, 1e-2),
                 # 'batch_size': (16 * np.arange(1,8)).tolist(),
-                'batch_size': (16 * np.arange(1,4)).tolist(),
+                # 'batch_size': (16 * np.arange(1,4)).tolist(),
+                'batch_size': [32],
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
+                'optimizer__weight_decay': [1e-4, 3e-4],
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
                 # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
                 'module__nonlin': [nn.ReLU],
@@ -77,11 +82,13 @@ params = dict(
         name='NeuralNet',
         model=NeuralNetClassifier(
             module=NeuralNet,
-            max_epochs=1 if cfg.debug else 40,
+            max_epochs=1 if cfg.debug else 15,
             criterion=nn.CrossEntropyLoss(),
-            train_split=ValidSplit(cv=0.1, stratified=False, random_state=5), # set later In case of intraDataset 
+            # train_split=CustomizedValidSplit(cv=0.15, stratified=True, random_state=None), # set later In case of intraDataset 
+            # train_split=ValidSplit(cv=0.15, stratified=True, random_state=None), # set later In case of intraDataset 
+            train_split=None,
             verbose=0,
-            callbacks=[EarlyStopping(patience=3)], 
+            # callbacks=[EarlyStopping(patience=5)], 
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],

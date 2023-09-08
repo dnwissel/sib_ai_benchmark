@@ -18,117 +18,53 @@ from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
-class NeuralNetClassifierHier(NeuralNetClassifier):
-
-    def __init__(
-            self,
-            module,
-            *args,
-            criterion=torch.nn.NLLLoss,
-            train_split=ValidSplit(5, stratified=True),
-            classes=None,
-            **kwargs
-    ):
-        super(NeuralNetClassifierHier, self).__init__(
-            module,
-            *args,
-            criterion=criterion,
-            train_split=train_split,
-            **kwargs
-        )
-        # self.classes = classes
-    
-    def fit_loop(self, X, y=None, epochs=None, **fit_params): 
-        # y = self.module.en.transform(y)  
-
-        self.check_data(X, y)
-        self.check_training_readiness()
-        epochs = epochs if epochs is not None else self.max_epochs
-
-        dataset_train, dataset_valid = self.get_split_datasets(
-            X, y, **fit_params)
-        on_epoch_kwargs = {
-            'dataset_train': dataset_train,
-            'dataset_valid': dataset_valid,
-        }
-        iterator_train = self.get_iterator(dataset_train, training=True)
-        iterator_valid = None
-        if dataset_valid is not None:
-            iterator_valid = self.get_iterator(dataset_valid, training=False)
-
-        for _ in range(epochs):
-            self.notify('on_epoch_begin', **on_epoch_kwargs)
-
-            self.run_single_epoch(iterator_train, training=True, prefix="train",
-                                  step_fn=self.train_step, **fit_params)
-
-            self.run_single_epoch(iterator_valid, training=False, prefix="valid",
-                                  step_fn=self.validation_step, **fit_params)
-
-            self.notify("on_epoch_end", **on_epoch_kwargs)
-        return self
-
+class NeuralNetClassifierHier_2(NeuralNetClassifier):
 
     def predict(self, X):
         output = self.forward(X)
-        constrained_out = get_constr_out(output, self.module.R)
-        preds = self._inference(constrained_out)
+        probas = torch.sigmoid(output) # TODO proba
+        preds = self._inference(probas.to('cpu').data)
         return preds
     
 
-    def _lhs(self, node, en, row, memo):
+    def _lhs_dp(self, node, en, row, memo):
         value = memo[node]
         if value != -1:
             return value
-        s_prime_pos = list(map(partial(self._lhs, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
-        lh_children = torch.prod(1 -  row[list(en.successor_dict[node])])
-        lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos))) * lh_children
+        s_prime_pos = list(map(partial(self._lhs_dp, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
+        lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
         memo[node] = lh
         return memo[node]
 
+    def _lhs(self, node, en, row, memo):
+        value = memo[node]
+        if value == 1:
+            return value
+        s_prime_pos = list(map(partial(self._lhs, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
+        lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
+        # memo[node] = lh
+        return lh
 
-    def _inference(self, constrained_output):
-        constrained_output = constrained_output.to('cpu')
-        y_pred = np.zeros(constrained_output.shape[0])
-        for row_idx, row in enumerate(constrained_output.data):
-            # init graph node attribute
-            # nx.set_node_attributes(en.G_idx, -1, name="lh")
-            # for root in en.roots_idx:
-            #     nx.set_node_attributes(en.G_idx, {root: {'lh': 1}})
-
-            memo = np.zeros(self.module.R.shape[1]) - 1
+    def _inference(self, probas):
+        y_pred = np.zeros(probas.shape[0])
+        for row_idx, row in enumerate(probas.data):
+            memo = np.zeros(len(self.module.en.G_idx.nodes())) - 1
             for root in self.module.en.roots_idx:
                 memo[root] = 1
 
             lhs = np.zeros(len(self.module.en.label_idx))
             for idx, label in enumerate(self.module.en.label_idx):
-                lh_ = self._lhs(label, self.module.en, row, memo)
-                lhs[idx] = lh_
+                lh_ = self._lhs_dp(label, self.module.en, row, memo)
+                lh_children = torch.prod(1 -  row[list(self.module.en.successor_dict[label])])
+                lhs[idx] = lh_ * lh_children
             y_pred[row_idx] = self.module.en.label_idx[np.argmax(lhs)]
-        # y_true = [self.module.en.node_map.get(e) for e in test_Y_raw]
-        # y_true = list(map(self.module.en.node_map.get, test_Y_raw))
         return y_pred
 
 
-def get_constr_out(x, R):
-    """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
-    # print(type(x))
-    if type(x) is np.ndarray:
-        print(x)
-    
-    c_out = x.double()
-    c_out = c_out.unsqueeze(1)
-    c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
-    R_batch = R.expand(len(x),R.shape[1], R.shape[1])
-    final_out, _ = torch.max(R_batch*c_out.double(), dim = 2)
-    return final_out
-
-
 class MaskBCE(nn.Module):
-    def __init__(self, en, loss_mask, idx_to_eval):
+    def __init__(self, en, idx_to_eval):
         super().__init__()
         self.en = en
-        self.loss_mask = loss_mask
         # self.R = R
         self.idx_to_eval = idx_to_eval
         # self.criterion = F.binary_cross_entropy()
@@ -143,27 +79,31 @@ class MaskBCE(nn.Module):
         train_output = output
 
         #Mask Loss
-        lm_batch = self.loss_mask[target]
-        target = self.en.transform(target)
+        loss_mask = self.en.get_lossMask()
+        loss_mask = loss_mask.to(device)
+        lm_batch = loss_mask[target]
+        target = self.en.transform(target.cpu().numpy())
         target = target.astype(np.float32)
         target = torch.from_numpy(target).to(device)
 
-        # lm_batch = self.loss_mask[self.label_loader[self.bid], :][:,  self.idx_to_eval]
-        # print(lm_batch.shape, train_output.shape,target.shape)
+        # #Mask target
+        # lm_batch = loss_mask[target]
+        # target = self.en.transform(target.numpy())
+        # target = target.astype(np.float32)
+        # target = np.where(lm_batch, target, 1)
+        # target = torch.from_numpy(target).to(device)
+
         loss = F.binary_cross_entropy_with_logits(train_output[:,self.idx_to_eval], target[:,self.idx_to_eval], reduction='none')
         loss = lm_batch[:,self.idx_to_eval] * loss
-        # self.bid = (self.bid + 1) % len(self.label_loader)
-        # print(self.bid)
         return loss.sum()
     
 
 class ConditionalSigmoid(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en,  R):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en):
         super().__init__()
         # self.module.en = en
         ConditionalSigmoid.en = en
         # self.R = R
-        ConditionalSigmoid.R = R
 
         layers = []
         # fixed_neuron_num = round(neuron_power * dim_in) - round(neuron_power * dim_in) % 16
@@ -209,21 +149,23 @@ device = (
 
 
 tuning_space={
-                'lr': loguniform(1e-3, 1e0),
-                'batch_size': (16 * np.arange(1,8)).tolist(), 
+                'lr': loguniform(1e-4, 1e-3),
+                'batch_size': [4, 16, 32],
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
+                'optimizer__weight_decay': loguniform(1e-5, 1e-4),
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
-                'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                'module__nonlin': [nn.ReLU],
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
                 'module__num_hidden_layers': [1],
                 # 'module__dor_input': uniform(0, 0.3),
-                'module__neuron_power': range(8, 13),
+                'module__neuron_power': range(9, 12),
                 'module__dor_input': [0],
                 'module__dor_hidden': uniform(0, 1)
 }
 
-model=NeuralNetClassifierHier(
+model=NeuralNetClassifierHier_2(
             module=ConditionalSigmoid,
             # max_epochs=30,
             max_epochs=1 if cfg.debug else 30,

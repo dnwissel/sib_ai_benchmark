@@ -17,65 +17,15 @@ from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
-class NeuralNetClassifierHier(NeuralNetClassifier):
-
-    def __init__(
-            self,
-            module,
-            *args,
-            criterion=torch.nn.NLLLoss,
-            train_split=ValidSplit(5, stratified=True),
-            classes=None,
-            **kwargs
-    ):
-        super(NeuralNetClassifierHier, self).__init__(
-            module,
-            *args,
-            criterion=criterion,
-            train_split=train_split,
-            **kwargs
-        )
-        # self.classes = classes
-    
-    def fit_loop(self, X, y=None, epochs=None, **fit_params): 
-        # y = self.module.en.transform(y)  
-        self.check_data(X, y)
-        self.check_training_readiness()
-        epochs = epochs if epochs is not None else self.max_epochs
-
-        dataset_train, dataset_valid = self.get_split_datasets(
-            X, y, **fit_params)
-        on_epoch_kwargs = {
-            'dataset_train': dataset_train,
-            'dataset_valid': dataset_valid,
-        }
-        iterator_train = self.get_iterator(dataset_train, training=True)
-        iterator_valid = None
-        if dataset_valid is not None:
-            iterator_valid = self.get_iterator(dataset_valid, training=False)
-
-        for _ in range(epochs):
-            self.notify('on_epoch_begin', **on_epoch_kwargs)
-
-            self.run_single_epoch(iterator_train, training=True, prefix="train",
-                                  step_fn=self.train_step, **fit_params)
-
-            self.run_single_epoch(iterator_valid, training=False, prefix="valid",
-                                  step_fn=self.validation_step, **fit_params)
-
-            self.notify("on_epoch_end", **on_epoch_kwargs)
-        return self
-
+class NeuralNetClassifierHier_1(NeuralNetClassifier):
 
     def predict(self, X):
         output = self.forward(X)
-        constrained_out = get_constr_out(output, self.module.R)
-        preds = self._inference(constrained_out)
+        constrained_out = get_constr_out(output, self.module.en.get_R())
+        preds = self._inference(constrained_out.to('cpu'))
         return preds
-    
 
     def _inference(self, constrained_output):
-        constrained_output = constrained_output.to('cpu')
         predicted = constrained_output.data > 0.5
         y_pred = np.zeros(predicted.shape[0])
         for row_idx, row in enumerate(predicted):
@@ -105,10 +55,10 @@ class NeuralNetClassifierHier(NeuralNetClassifier):
 
 def get_constr_out(x, R):
     """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
-    # print(type(x))
-    # if type(x) is np.ndarray:
-    #     print(x)
-    
+    x = x.to(device)
+    R = R.to(device)
+
+    x = torch.sigmoid(x)
     c_out = x.double()
     c_out = c_out.unsqueeze(1)
     c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
@@ -118,21 +68,22 @@ def get_constr_out(x, R):
 
 
 class MCLoss(nn.Module):
-    def __init__(self, en, R, idx_to_eval):
+    def __init__(self, en, idx_to_eval):
         super().__init__()
-        self.R = R
         self.idx_to_eval = idx_to_eval
-        self.criterion = nn.BCEWithLogitsLoss()
+        # self.criterion = nn.BCEWithLogitsLoss()
+        self.criterion = nn.BCELoss()
         self.en = en
 
     def forward(self, output, target):
-        target = self.en.transform(target)
-        target = target.astype(np.float32)
+        # print(target)
+        target = self.en.transform(target.cpu().numpy())
+        target = target.astype(np.double)
         target = torch.from_numpy(target).to(device)
 
-        constr_output = get_constr_out(output, self.R)
+        constr_output = get_constr_out(output, self.en.get_R())
         train_output = target*output.double()
-        train_output = get_constr_out(train_output, self.R)
+        train_output = get_constr_out(train_output, self.en.get_R())
         train_output = (1-target)*constr_output.double() + target*train_output
 
         #MCLoss
@@ -144,12 +95,11 @@ class MCLoss(nn.Module):
 
 
 class C_HMCNN(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en,  R):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, en):
         super().__init__()
         # self.module.en = en
         C_HMCNN.en = en
         # self.R = R
-        C_HMCNN.R = R
 
         layers = []
         # fixed_neuron_num = round(neuron_power * dim_in) - round(neuron_power * dim_in) % 16
@@ -184,7 +134,6 @@ class C_HMCNN(nn.Module):
         return x
 
 
-
 device = (
     "cuda"
     if torch.cuda.is_available()
@@ -195,21 +144,23 @@ device = (
 
 
 tuning_space={
-                'lr': loguniform(1e-3, 1e0),
-                'batch_size': (16 * np.arange(1,8)).tolist(), 
+                'lr': loguniform(1e-4, 1e-3),
+                'batch_size': [4, 16, 32],
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
+                'optimizer__weight_decay': loguniform(1e-5, 1e-4),
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
-                'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
+                'module__nonlin': [nn.ReLU],
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
                 'module__num_hidden_layers': [1],
                 # 'module__dor_input': uniform(0, 0.3),
-                'module__neuron_power': range(8, 13),
+                'module__neuron_power': range(9, 12),
                 'module__dor_input': [0],
-                'module__dor_hidden': uniform(0, 0.5)
+                'module__dor_hidden': uniform(0, 1)
 }
 
-model=NeuralNetClassifierHier(
+model=NeuralNetClassifierHier_1(
             module=C_HMCNN,
             # max_epochs=30,
             max_epochs=1 if cfg.debug else 30,
