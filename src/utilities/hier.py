@@ -100,48 +100,29 @@ class Encoder:
             return R
         return R
 
-def get_R(en):
-    # Compute matrix of ancestors R
-    # Given n classes, R is an (n x n) matrix where R_ij = 1 if class i is ancestor of class j
-    nodes = en.G_idx.nodes()
-    num_nodes = len(nodes)
-    R = np.zeros((num_nodes, num_nodes))
-    np.fill_diagonal(R, 1)
 
-    for i in range(num_nodes):
-        ancestors = list(nx.ancestors(en.G_idx, i))
-        if ancestors:
-            R[i, ancestors] = 1
+    def get_lossMask(self):
+        # Compute loss mask for Cont. sigmoid
+        nodes = self.G_idx.nodes()
+        num_nodes = len(nodes)
+        loss_mask = np.zeros((num_nodes, num_nodes))
+        np.fill_diagonal(loss_mask, 1)
 
-    R = torch.tensor(R)
-    #Transpose to get the descendants for each node
-    R = R.transpose(1, 0)
-    R = R.unsqueeze(0)
-    return R
+        for i in range(num_nodes):
+            ancestors = list(nx.ancestors(self.G_idx, i))
+            children = list(self.G_idx.successors(i))
+            parents = list(self.G_idx.predecessors(i))
+            for a in ancestors:
+                children = list(self.G_idx.successors(a))
+                if children:
+                    loss_mask[i, children] = 1
 
-
-def get_lossMask(en):
-    # Compute loss mask for Cont. sigmoid
-    nodes = en.G_idx.nodes()
-    num_nodes = len(nodes)
-    loss_mask = np.zeros((num_nodes, num_nodes))
-    np.fill_diagonal(loss_mask, 1)
-
-    for i in range(num_nodes):
-        ancestors = list(nx.ancestors(en.G_idx, i))
-        children = list(en.G_idx.successors(i))
-        parents = list(en.G_idx.predecessors(i))
-        for a in ancestors:
-            children = list(en.G_idx.successors(a))
             if children:
                 loss_mask[i, children] = 1
+            if parents:
+                loss_mask[i, parents] = 1
 
-        if children:
-            loss_mask[i, children] = 1
-        if parents:
-            loss_mask[i, parents] = 1
-
-    loss_mask = torch.tensor(loss_mask)
-    # loss_mask = loss_mask.unsqueeze(0).to(device)
-    # loss_mask = loss_mask.to(device)
-    return loss_mask
+        loss_mask = torch.tensor(loss_mask)
+        # loss_mask = loss_mask.unsqueeze(0).to(device)
+        # loss_mask = loss_mask.to(device)
+        return loss_mask

@@ -232,7 +232,6 @@ class WrapperHierCS(Wrapper):
 
             nodes = en.G_idx.nodes()
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
-            loss_mask = get_lossMask(en)
 
             # Set input dim for NN
             try:
@@ -245,7 +244,6 @@ class WrapperHierCS(Wrapper):
                  module__dim_in=num_feature,
                  module__dim_out=len(en.G_idx.nodes()), 
                  criterion__en=en,
-                 criterion__loss_mask=loss_mask, 
                  criterion__idx_to_eval=idx_to_eval
             ) 
 

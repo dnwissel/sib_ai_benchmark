@@ -62,10 +62,9 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
 
 
 class MaskBCE(nn.Module):
-    def __init__(self, en, loss_mask, idx_to_eval):
+    def __init__(self, en, idx_to_eval):
         super().__init__()
         self.en = en
-        self.loss_mask = loss_mask.to(device)
         # self.R = R
         self.idx_to_eval = idx_to_eval
         # self.criterion = F.binary_cross_entropy()
@@ -80,13 +79,15 @@ class MaskBCE(nn.Module):
         train_output = output
 
         #Mask Loss
-        lm_batch = self.loss_mask[target]
+        loss_mask = self.en.get_lossMask()
+        loss_mask = loss_mask.to(device)
+        lm_batch = loss_mask[target]
         target = self.en.transform(target.cpu().numpy())
         target = target.astype(np.float32)
         target = torch.from_numpy(target).to(device)
 
         # #Mask target
-        # lm_batch = self.loss_mask[target]
+        # lm_batch = loss_mask[target]
         # target = self.en.transform(target.numpy())
         # target = target.astype(np.float32)
         # target = np.where(lm_batch, target, 1)
