@@ -2,7 +2,7 @@ from functools import partial
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from config import cfg
-from utilities.hier import Encoder, get_lossMask, get_R
+from utilities.hier import Encoder
 from scipy.special import softmax
 from utilities import dataLoader  as dl
 import numpy as np
