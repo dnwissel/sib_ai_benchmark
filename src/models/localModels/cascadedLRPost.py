@@ -27,7 +27,7 @@ class CascadedLRPost:
         encoded_y = self.encoder.transform(y)
         self.node_indicators = encoded_y.T
         self.trained_classifiers = np.zeros(encoded_y.shape[1], dtype=object)
-        for idx, node_y in enumerate(node_indicators):
+        for idx, node_y in enumerate(self.node_indicators):
             unique_node_y = np.unique(node_y)
             if len(unique_node_y) == 1:
                 cls = int(unique_node_y[0])
@@ -57,6 +57,39 @@ class CascadedLRPost:
 
     def predict_LR(self):
         pass
+    
+    def _coumpute_marginals(self, anc_matrix, log_marginal_probas, log_proba, idx):
+        log_mp = log_marginal_probas[idx] 
+        if log_mp is not None:
+            return log_mp
+        
+        anc_mask = anc_matrix[idx, :]
+        anc_probas = log_marginal_probas[anc_mask]
+        # for proba in anc_probas:
+
+
+        pass
+
+    def get_marginal_proba(self, log_probas_full):
+        """Algo in CELLO paper, actually AND logic"""
+        # Compute the marginals for each label by multiplying all of the conditional
+        # probabilities from that label up to the root of the DAG
+        anc_matrix = self.encoder.get_R().T
+
+        marginal_probas_full = []
+        for log_probas in log_probas_full:
+            log_marginal_probas = np.full(shape=len(log_probas), fill_value=None)
+            roots_idx = self.encoder.roots_idx
+            log_marginal_probas[roots_idx] = 0
+            for idx, log_proba in enumerate(log_probas):
+                self._coumpute_marginals(anc_matrix, log_marginal_probas, log_proba, idx)
+                # log_marginal_probas = 
+                # anc_labels = set(self.label_graph.ancestor_nodes(label)) - set([label])
+                # for anc_label in anc_labels:
+                #     anc_probs = label_to_cond_log_probs[anc_label]
+                #     products = np.add(products, anc_probs)
+                # products = np.add(products, log_probs)
+                # label_to_marginals[label] = np.exp(products)
 
     def set_encoder(self, encoder):
         self.encoder = encoder
