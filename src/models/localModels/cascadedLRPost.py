@@ -35,40 +35,49 @@ class CascadedLRPost:
                 cls = self.base_learner.fit(X, node_y)
             self.trained_classifiers[idx] = cls
 
-    def fit_LR(self, probas):
-        R = self.encoder.get_R()
-        self.LR_cls = [] # train for each node
-        n_sample = probas.shape(0)
-        n_node = probas.shape(1)
+    # def fit_LR(self, probas):
+    #     R = self.encoder.get_R()
+    #     self.LR_cls = [] # train for each node
+    #     n_sample = probas.shape(0)
+    #     n_node = probas.shape(1)
 
-        LR = LogisticRegression(max_iter=1000)
-        for node in range(n_node):
-            node_y = self.node_indicators[:, node]
-            unique_node_y = np.unique(node_y)
-            if node in self.encoder.root_idx:
-                cls = 1
-            elif len(unique_node_y) == 1:
-                cls = int(unique_node_y[0])
-            else:
-                mask = R[node, :]
-                anc_probas = probas[:, mask]
-                cls = LR.fit(anc_probas, node_y)
-            self.LR_cls[node] = cls
+    #     LR = LogisticRegression(max_iter=1000)
+    #     for node in range(n_node):
+    #         node_y = self.node_indicators[:, node]
+    #         unique_node_y = np.unique(node_y)
+    #         if node in self.encoder.root_idx:
+    #             cls = 1
+    #         elif len(unique_node_y) == 1:
+    #             cls = int(unique_node_y[0])
+    #         else:
+    #             mask = R[node, :]
+    #             anc_probas = probas[:, mask]
+    #             cls = LR.fit(anc_probas, node_y)
+    #         self.LR_cls[node] = cls
 
-    def predict_LR(self):
-        pass
+
+    # def predict_LR(self):
+    #     pass
     
+
     def _coumpute_marginals(self, anc_matrix, log_marginal_probas, log_proba, idx):
         log_mp = log_marginal_probas[idx] 
         if log_mp is not None:
             return log_mp
         
         anc_mask = anc_matrix[idx, :]
-        anc_probas = log_marginal_probas[anc_mask]
-        # for proba in anc_probas:
+        idx = np.arange(len(log_marginal_probas))
+        anc_idxs = idx[anc_mask]
+        sum = 0
+        for idx in anc_idxs:
+            anc_proba = log_marginal_probas[idx]
+            if anc_proba is not None:
+                sum += anc_proba
+            else:
+                sum += self._coumpute_marginals(anc_matrix, log_marginal_probas, log_proba, idx)
 
+        return sum
 
-        pass
 
     def get_marginal_proba(self, log_probas_full):
         """Algo in CELLO paper, actually AND logic"""
@@ -83,33 +92,31 @@ class CascadedLRPost:
             log_marginal_probas[roots_idx] = 0
             for idx, log_proba in enumerate(log_probas):
                 self._coumpute_marginals(anc_matrix, log_marginal_probas, log_proba, idx)
-                # log_marginal_probas = 
-                # anc_labels = set(self.label_graph.ancestor_nodes(label)) - set([label])
-                # for anc_label in anc_labels:
-                #     anc_probs = label_to_cond_log_probs[anc_label]
-                #     products = np.add(products, anc_probs)
-                # products = np.add(products, log_probs)
-                # label_to_marginals[label] = np.exp(products)
+            
+            marginal_probas = np.exp(log_marginal_probas)
+            marginal_probas_full.append(marginal_probas)
+
 
     def set_encoder(self, encoder):
         self.encoder = encoder
 
-    #TODO
-    def predict_proba(self, X):
+
+    def predict_log_proba(self, X):
         probas = []
         for cls in self.trained_classifiers:
             if isinstance(cls, int):
-                col = np.repeat([cls], X.shape[0])
+                col = np.repeat(np.log([cls]), X.shape[0]) # TODO log
             else:
-                col = cls.predict_proba(X)[:, 1] # proba for pos class
+                col = cls.predict_log_proba(X)[:, 1] # proba for pos class
             probas.append(col)
-        probas =  self.predict_LR(np.array(probas).T)
+        probas =  np.array(probas).T
         return probas
 
 
     def predict(self, X):
-        probas = self.predict_proba(X)
-        return self._inference(probas)
+        log_probas = self.predict_log_proba(X)
+        marginal_probas_full = self.get_marginal_proba(log_probas)
+        return self._inference(marginal_probas_full)
 
     #TODO: refactor to a func
     def _inference(self, probas, threshold=0.5):
