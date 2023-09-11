@@ -164,8 +164,8 @@ class WrapperHier(Wrapper):
                  y_test.append(en.node_map.get(lable, -1))
             y_test = np.array(y_test)
 
+            # print(y_train, y_test)
             nodes = en.G_idx.nodes()
-            R = get_R(en)
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
 
             # Set input dim for NN
@@ -175,12 +175,10 @@ class WrapperHier(Wrapper):
                 num_feature = X.shape[1]
 
             self.model.set_params(
-                 module__R=R,
                  module__en=en,
                  module__dim_in=num_feature,
                  module__dim_out=len(en.G_idx.nodes()), 
                  criterion__en=en,
-                 criterion__R=R, 
                  criterion__idx_to_eval=idx_to_eval
             ) 
 
@@ -231,9 +229,7 @@ class WrapperHierCS(Wrapper):
             y_test = np.array(y_test)
 
             nodes = en.G_idx.nodes()
-            R = get_R(en)
             idx_to_eval = list(set(nodes) - set(en.roots_idx))
-            loss_mask = get_lossMask(en)
 
             # Set input dim for NN
             try:
@@ -242,12 +238,10 @@ class WrapperHierCS(Wrapper):
                 num_feature = X.shape[1]
             
             self.model.set_params(
-                 module__R=R,
                  module__en=en,
                  module__dim_in=num_feature,
                  module__dim_out=len(en.G_idx.nodes()), 
                  criterion__en=en,
-                 criterion__loss_mask=loss_mask, 
                  criterion__idx_to_eval=idx_to_eval
             ) 
 

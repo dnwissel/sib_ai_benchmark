@@ -39,8 +39,6 @@ from statistics import mean
 # TODO: documentation
 # TODO: dump Results to disk every three(interval) classifiers in case of training failure
 
-# create logger
-logger = Logger(name='App', log_to_file=True, log_to_console=False)
 
 class Benchmark:
     def __init__(self, classifiers, datasets, tuning_mode='sample'):
@@ -65,7 +63,7 @@ class Benchmark:
         test_row_ids = []
         res = {}
         for classifier in self.classifiers:
-            logger.write(f'{classifier.name}:', msg_type='subtitle')
+            self.logger.write(f'{classifier.name}:', msg_type='subtitle')
             best_params = []
             model_result = {}
             params_search_required = True
@@ -127,6 +125,7 @@ class Benchmark:
                             scoring=inner_metrics, 
                             n_iter=1 if cfg.debug else 15, 
                             refit=True, 
+                            random_state=15, 
                             n_jobs=-1
                         ) 
                     else:
@@ -150,14 +149,14 @@ class Benchmark:
                 # Log results in the last fold
                 if fold_idx == n_splits - 1: 
                     if not params_search_required:
-                        logger.write(
+                        self.logger.write(
                             (f'Steps in pipline: {dict(pipeline_steps)}\n' # TODO: case: no pipeline 
                             f'Best hyperparameters: Not available, parameters are defined by user.'), 
                             msg_type='content'
                         )
                     else:
                         best_params_unique = [str(dict(y)) for y in set(tuple(x.items()) for x in best_params)]
-                        logger.write(
+                        self.logger.write(
                             (f'Steps in pipline: {dict(pipeline_steps)}\n'
                             f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}'),
                             msg_type='content'
@@ -220,14 +219,14 @@ class Benchmark:
                         median_score = np.median(scores_)
                         scores[metric_name].update({'mean': mean_score, 'median': median_score})
 
-                        logger.write(
+                        self.logger.write(
                             f'{metric_name.upper()}: Best Mean Score: {mean_score:.4f}  Best Median Score: {median_score:.4f}',
                             msg_type='content'
                         )
                         res[classifier.name] = model_result
                 # break
             
-            logger.write('', msg_type='content')
+            self.logger.write('', msg_type='content')
 
         return res, true_labels_test, test_row_ids
     
@@ -248,11 +247,14 @@ class Benchmark:
 
     def run(self, inner_metrics, outer_metrics, task_name = 'testing_run', random_seed=15, description='', is_pre_splits=True, is_outer_cv=False):
         self.task_name = task_name
-        logger.write(f'Task {task_name.upper()} Started.', msg_type='title')
-        logger.write(
+        # create logger
+        self.logger = Logger(name=task_name, log_to_file=True, log_to_console=False)
+
+        self.logger.write(f'Task {task_name.upper()} Started.', msg_type='title')
+        self.logger.write(
             f'{len(self.classifiers)} model(s) loaded: {", ".join(c.name for c in self.classifiers )}', msg_type='subtitle'
             )
-        logger.write(
+        self.logger.write(
             f'{len(self.datasets)} dataset(s) loaded: {", ".join(list(self.datasets.keys()) )}', msg_type='subtitle'
         )
 
@@ -260,12 +262,12 @@ class Benchmark:
         # Loop over different datasets
         # for name, path in data_paths.items():
         for dn, dataset in self.datasets.items():
-            logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
+            self.logger.write(f'Start benchmarking models on dataset {dn.upper()}.', msg_type='subtitle')
             # inner_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_seed)
             # inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_seed)
             outer_cv = LeaveOneGroupOut()
 
-            if dn in ['body', 'head', 'antenna']:
+            if dn in ['body', 'head']:
                 inner_cv = StratifiedGroupKFold(n_splits=4)
                 outer_cv = StratifiedGroupKFold(n_splits=5)
                 # inner_cv = GroupKFold(n_splits=4)
@@ -284,69 +286,12 @@ class Benchmark:
                 'test_row_ids': test_row_ids
             }})
             
-        # self._save() # dump the predicts
 
-        logger.write(
+        self.logger.write(
             '~~~TASK COMPLETED~~~\n\n',
             msg_type='subtitle'
         )
             
 
 if __name__ == "__main__":
-    # Get raw data path
-    current_file_dir = os.path.dirname(__file__)
-    data_dir = os.path.join(os.path.dirname(current_file_dir), 'data-raw')
-    path_asap = data_dir + "/ASAP41_final.h5ad"
-    path_bgee = data_dir + "/SRP200614.h5ad"
-
-    # Load raw data
-    # ann = anndata.read_h5ad(path_bgee)
-    # # X = ann.X
-    # # y = ann.obs['cellTypeId'].cat.codes
-    # mask = ann.obs['cellTypeId'] != 'unannotated'
-    # X = ann.X[mask][:100]
-    # y = ann.obs[mask]['cellTypeId'].cat.codes[:100]
-    
-    # groups = None
-    # if 'batch' in ann.obs.columns:
-    #     groups = ann.obs['batch']
-    # # Datatype for torch tensors
-    # X, y = X.astype(float32), y.astype(np.int64)
-    # bgee = (X.toarray(), y, groups)
-
-    # Load embeddings
-    path =  data_dir + '/processed'
-    splits_fn = {}
-    for fn in os.listdir(path):
-        idx = fn.find('_train_')
-        if idx == -1:
-            idx = fn.find('_test_')
-        if idx != -1:
-            tissue_name = fn[:idx]
-            splits_fn.setdefault(tissue_name, []).append(fn)
-
-    splits_data = {}
-    for k, v in splits_fn.items():
-        v = sorted(v, key = lambda x : (x[x.rindex('_') + 1:], x[x.rindex('_') - 1]))
-        # v = sorted(v, key = lambda x : (x[x.rindex('_') + 1], x[x.rindex('_') - 1]), reverse=True)
-        splits_fn[k] = [(v[i],v[i + 1]) for i in range(0,len(v), 2)]
-        data = []
-        for i in range(0,len(v), 2):
-            ann_train = anndata.read_h5ad(path + '/' + v[i])
-            ann_test = anndata.read_h5ad(path + '/' + v[i + 1])
-            splits_data.setdefault(k, []).append([(ann_train.X, ann_train.obs['y']), (ann_test.X, ann_test.obs['y'])])
-    
-    # Run App
-    bm = Benchmark(tuning_mode="sample") 
-    
-    params = dict(
-        # selected_models=['NeuralNet'], 
-        selected_models=['C-HMCNN'], 
-        # data_paths={'bgee': path_bgee, 'asap': path_asap},
-        datasets = splits_data,
-        inner_metrics='accuracy',
-        outer_metrics={'accuracy': accuracy_score, 'balanced_accuracy_score': balanced_accuracy_score, 'f1_score_macro': partial(f1_score, average='macro'), 'f1_score_weighted': partial(f1_score, average='weighted')},
-        # outer_metrics={'accuracy': accuracy_score, 'f1_score': f1_score },
-        task_name='testing_run'
-    )
-    bm.run(**params)
+    pass
