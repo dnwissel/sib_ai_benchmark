@@ -55,8 +55,13 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
 
 def get_constr_out(x, R):
     """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
-    x = x.to(device)
-    R = R.to(device)
+    
+    # x = x.to(device)
+    # R = R.to(device)
+
+    # Not enough mem in GPU, calculate on CPU
+    x = x.to('cpu')
+    R = R.to('cpu')
 
     x = torch.sigmoid(x)
     c_out = x.double()
@@ -64,6 +69,9 @@ def get_constr_out(x, R):
     c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
     R_batch = R.expand(len(x),R.shape[1], R.shape[1])
     final_out, _ = torch.max(R_batch*c_out.double(), dim = 2)
+    # put back on GPU
+    final_out = final_out.to(device)
+
     return final_out
 
 
@@ -155,7 +163,7 @@ tuning_space={
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
                 'module__num_hidden_layers': [1],
                 # 'module__dor_input': uniform(0, 0.3),
-                'module__neuron_power': range(9, 12),
+                'module__neuron_power': range(9, 11),
                 'module__dor_input': [0],
                 'module__dor_hidden': uniform(0, 1)
 }

@@ -160,7 +160,7 @@ tuning_space={
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
                 'module__num_hidden_layers': [1],
                 # 'module__dor_input': uniform(0, 0.3),
-                'module__neuron_power': range(9, 12),
+                'module__neuron_power': range(9, 11),
                 'module__dor_input': [0],
                 'module__dor_hidden': uniform(0, 1)
 }
