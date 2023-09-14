@@ -5,7 +5,7 @@ from sklearn.preprocessing import OrdinalEncoder
 
 import random
 import anndata
-from models.wrapper import WrapperHier
+from models.wrapper import WrapperHier, WrapperHierCS, WrapperLocal
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -173,7 +173,7 @@ class Benchmark:
                 y_test_proba_uncalib = []
                 y_test_predict_calib = []
                 ece = []
-                if isinstance(classifier, WrapperHier):
+                if isinstance(classifier, WrapperHier) or isinstance(classifier, WrapperLocal) or isinstance(classifier, WrapperHierCS):
                     pass
                 else:
                     if logits is not None:
