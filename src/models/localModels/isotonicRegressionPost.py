@@ -17,6 +17,7 @@ class IsotonicRegressionPost:
         self.encoder = encoder
         self.trained_classifiers = None
         self.base_learner = base_learner
+        self.predict_path = False
        
     def fit(self, X, y):
         self._fit_base_learner(X, y)
@@ -78,8 +79,10 @@ class IsotonicRegressionPost:
         return probas
 
 
-    def predict(self, X):
+    def predict(self, X, threshold=0.5):
         probas = self.predict_proba(X)
+        if self.predict_path:
+            return probas > threshold
         return self._inference(probas)
 
     #TODO: refactor to a func

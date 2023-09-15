@@ -29,9 +29,10 @@ from scipy.special import softmax
 from calibration.calibrate_model import CalibratedClassifier
 # import models
 
-from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score
+from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
 from statistics import mean
 
+from metrics.f1_hier import f1_hier
 # TODO: refactor to dataloader module
 # TODO: Enable pass dataset matrix  to app 
 # TODO: check if train and test have the sampe y.nunique()
@@ -48,6 +49,7 @@ class Benchmark:
         self.results = None
         self.datasets = datasets
         self.task_name = None
+        self.path_eval = False
 
 
     def _validate_input(self,tuning_mode):
@@ -110,11 +112,23 @@ class Benchmark:
                     true_labels_test.append(y_test.tolist())
                     test_row_ids.append(row_ids_split.tolist())
 
+                # Set Hier metric
+                if self.path_eval: #TODO: refactor to general case
+                    f1_hier_ = partial(f1_hier, en=classifier.encoder)
+                    inner_metrics = make_scorer(f1_hier_)
+
+                    try:
+                        pipeline.steps[-1][1].predict_path = True
+                    except:
+                        print("An exception occurred")
+
+                    outer_metrics = {'f1_hier': f1_hier_}
                 # Fine-tuned model 
                 if not param_grid:
                     model_selected = pipeline
                     params_search_required = False
                     model_selected.fit(X_train, y_train)
+
                 # Tune Params
                 else:
                     if self.tuning_mode.lower() == 'sample':
@@ -242,11 +256,14 @@ class Benchmark:
     
     
     def plot(self, dir, metric_name='f1_score_macro'):
+        if self.path_eval:
+            metric_name = 'f1_hier'
         plot(self.results, metric_name, os.path.join(dir, self.task_name))
 
 
-    def run(self, inner_metrics, outer_metrics, task_name = 'testing_run', random_seed=15, description='', is_pre_splits=True, is_outer_cv=False):
+    def run(self, inner_metrics, outer_metrics, task_name = 'testing_run', random_seed=15, description='', is_pre_splits=True, is_outer_cv=False, path_eval=False):
         self.task_name = task_name
+        self.path_eval = path_eval
         # create logger
         self.logger = Logger(name=task_name, log_to_file=True, log_to_console=False)
 

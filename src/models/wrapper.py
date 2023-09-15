@@ -28,6 +28,7 @@ class Wrapper:
         self.best_params = None
         self.g_global = None
         self.roots_label = None
+        self.encoder = None
 
     def predict_proba(self, model_fitted, X):
         return model_fitted.predict_proba(X), None
@@ -74,8 +75,6 @@ class Wrapper:
 
 
 class WrapperSVM(Wrapper):
-        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
-                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
 
         def predict_proba(self, model_fitted, X):
                 confidence = model_fitted.decision_function(X)
@@ -88,8 +87,6 @@ class WrapperSVM(Wrapper):
         
 
 class WrapperNN(Wrapper):
-        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
-                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
 
         def init_model(self, X, train_y_label, test_y_label):
             # Define pipeline and param_grid
@@ -132,8 +129,6 @@ class WrapperNN(Wrapper):
 
 
 class WrapperHier(Wrapper):
-        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
-                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
 
         def init_model(self, X, train_y_label, test_y_label):
 
@@ -157,6 +152,7 @@ class WrapperHier(Wrapper):
             en = Encoder(self.g_global, self.roots_label)
 
             en = en.fit(train_y_label)
+            self.encoder = en
             y_train = np.array(list(map(en.node_map.get, train_y_label)))
             # y_test = np.array(list(map(partial(en.node_map.get, d=-1), test_y_label)))
             y_test = []
@@ -195,8 +191,6 @@ class WrapperHier(Wrapper):
 
 
 class WrapperHierCS(Wrapper):
-        def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
-                super().__init__(model, name, tuning_space, preprocessing_steps, preprocessing_params, is_selected)
 
         def init_model(self, X, train_y_label, test_y_label):
             # Define pipeline and param_grid
@@ -221,6 +215,7 @@ class WrapperHierCS(Wrapper):
             # y_test = en.transform(test_y_label)
 
             en = en.fit(train_y_label)
+            self.encoder = en
             y_train = np.array(list(map(en.node_map.get, train_y_label)))
             # y_test = np.array(list(map(partial(en.node_map.get, d=-1), test_y_label)))
             y_test = []
@@ -279,6 +274,8 @@ class WrapperLocal(Wrapper):
             en = Encoder(self.g_global, self.roots_label)
 
             en = en.fit(train_y_label)
+            self.encoder = en
+
             y_train = np.array(list(map(en.node_map.get, train_y_label)))
             y_test = []
             for lable in test_y_label:

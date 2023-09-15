@@ -19,10 +19,34 @@ from scipy.stats import loguniform, uniform, randint
 
 class NeuralNetClassifierHier_1(NeuralNetClassifier):
 
-    def predict(self, X):
+    def __init__(
+            self,
+            module,
+            *args,
+            criterion=torch.nn.NLLLoss,
+            train_split=ValidSplit(5, stratified=True),
+            classes=None,
+            **kwargs
+    ):
+        super(NeuralNetClassifier, self).__init__(
+            module,
+            *args,
+            criterion=criterion,
+            train_split=train_split,
+            **kwargs
+        )
+        self.classes = classes
+        self.predict_path = False
+        
+    def predict(self, X, threshold=0.5):
         output = self.forward(X)
         constrained_out = get_constr_out(output, self.module.en.get_R())
-        preds = self._inference(constrained_out.to('cpu'))
+        constrained_out = constrained_out.to('cpu')
+
+        if self.predict_path:
+            return constrained_out > threshold
+            
+        preds = self._inference(constrained_out)
         return preds
 
     def _inference(self, constrained_output):

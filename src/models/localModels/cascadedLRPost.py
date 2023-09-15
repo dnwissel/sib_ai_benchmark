@@ -18,6 +18,8 @@ class CascadedLRPost:
         self.trained_classifiers = None
         self.base_learner = base_learner
         self.node_indicators = None
+        self.predict_path = False
+
        
     def fit(self, X, y):
         self._fit_base_learner(X, y)
@@ -123,9 +125,11 @@ class CascadedLRPost:
         return probas
 
 
-    def predict(self, X):
+    def predict(self, X, threshold=0.5):
         log_probas = self.predict_log_proba(X)
         self.marginal_probas_full = self.get_marginal_proba(log_probas)
+        if self.predict_path:
+            return self.marginal_probas_full > threshold
         return self._inference(self.marginal_probas_full)
 
     def predict_proba(self, X):

@@ -4,6 +4,7 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
+from hiclass.metrics import f1 as f1_hier
 
 import random
 import anndata
@@ -72,6 +73,13 @@ def main():
         action='store_true',
         help="Debug mode"
     )
+
+    parser.add_argument(
+        '-p',
+        "--path_eval",
+        action='store_true',
+        help="Evaluate Path"
+    )
     args = parser.parse_args()
 
     # Load data
@@ -106,15 +114,16 @@ def main():
 
     params = dict(
         # inner_metrics='accuracy',
-        inner_metrics=make_scorer(f1_score_macro),
+        inner_metrics=make_scorer(f1_score_macro) if not args.path_eval else 'f1_hier',
         outer_metrics={
             'accuracy': accuracy_score, 
             'balanced_accuracy_score': balanced_accuracy_score, 
             'f1_score_macro': f1_score_macro, 
             'f1_score_weighted': f1_score_weighted
-        },
+        } if not args.path_eval else 'f1_hier',
         task_name=task_name,
-        is_pre_splits=exp_cfg['is_pre_splits']
+        is_pre_splits=exp_cfg['is_pre_splits'],
+        path_eval=args.path_eval
     )
     bm.run(**params)
     bm.save(cfg.path_res) #TODO: refactor
