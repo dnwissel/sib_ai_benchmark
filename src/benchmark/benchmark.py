@@ -32,7 +32,7 @@ from calibration.calibrate_model import CalibratedClassifier
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
 from statistics import mean
 
-from metrics.f1_hier import f1_hier
+from metrics.f1_hier import f1_hier, precision_hier, recall_hier
 # TODO: refactor to dataloader module
 # TODO: Enable pass dataset matrix  to app 
 # TODO: check if train and test have the sampe y.nunique()
@@ -115,14 +115,19 @@ class Benchmark:
                 # Set Hier metric
                 if self.path_eval: #TODO: refactor to general case
                     f1_hier_ = partial(f1_hier, en=classifier.encoder)
+                    recall_hier_ = partial(recall_hier, en=classifier.encoder)
+                    precision_hier_ = partial(precision_hier, en=classifier.encoder)
+
                     inner_metrics = make_scorer(f1_hier_)
 
                     try:
-                        pipeline.steps[-1][1].predict_path = True
+                        # print( pipeline.steps[-1][1].predict_path)
+                        # pipeline.steps[-1][1].predict_path = True
+                        pipeline.steps[-1][1].set_predictPath(True)
                     except:
-                        print("An exception occurred")
+                        print("An exception occurred, set_predictPath failed")
 
-                    outer_metrics = {'f1_hier': f1_hier_}
+                    outer_metrics = {'f1_hier': f1_hier_, 'recall_hier': recall_hier_, 'precision_hier': precision_hier_}
                 # Fine-tuned model 
                 if not param_grid:
                     model_selected = pipeline

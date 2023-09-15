@@ -36,14 +36,17 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
             **kwargs
         )
         self.classes = classes
-        self.predict_path = False
+        # self.predict_path = True
+    
+    def set_predictPath(self, val):
+        self.predict_path = val
         
     def predict(self, X, threshold=0.5):
         output = self.forward(X)
         constrained_out = get_constr_out(output, self.module.en.get_R())
         constrained_out = constrained_out.to('cpu')
 
-        if self.predict_path:
+        if hasattr(self, 'predict_path'):
             return constrained_out > threshold
             
         preds = self._inference(constrained_out)

@@ -18,7 +18,10 @@ class IsotonicRegressionPost:
         self.trained_classifiers = None
         self.base_learner = base_learner
         self.predict_path = False
-       
+    
+    def set_predictPath(self, val):
+        self.predict_path = val
+        
     def fit(self, X, y):
         self._fit_base_learner(X, y)
         return self
