@@ -12,7 +12,7 @@ class CascadedLRPost:
     def __init__(
             self,
             encoder=None,
-            base_learner=LogisticRegression(max_iter=1000),
+            base_learner=LogisticRegression(max_iter=1000, class_weight='balanced'),
         ):
         self.encoder = encoder
         self.trained_classifiers = None
