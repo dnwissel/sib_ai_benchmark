@@ -46,7 +46,7 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
         constrained_out = get_constr_out(output, self.module.en.get_R())
         constrained_out = constrained_out.to('cpu')
 
-        if hasattr(self, 'predict_path'):
+        if hasattr(self, 'predict_path') and self.predict_path:
             return constrained_out > threshold
             
         preds = self._inference(constrained_out)
@@ -77,6 +77,20 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
                     labels_sorted = [i for i in labels_sorted if i not in path]
                 idx = np.argmax(constrained_output.data[row_idx, preds])
                 y_pred[row_idx] = preds[idx]
+        return y_pred
+    
+
+    def _inference_2(self, constrained_output):
+        """Select index of the last 1 on the path as the preds"""
+        predicted = constrained_output.data > 0.5
+        y_pred = np.zeros(predicted.shape[0])
+
+        for row_idx, row in enumerate(predicted):
+            for ridx in range(len(row) - 1 , -1, -1):
+                idx = len(row) - 1 - ridx
+                if idx in elf.module.en.label_idx:
+                    y_pred[row_idx] = idx
+                    break
         return y_pred
 
 

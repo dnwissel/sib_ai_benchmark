@@ -32,7 +32,7 @@ from calibration.calibrate_model import CalibratedClassifier
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
 from statistics import mean
 
-from metrics.f1_hier import f1_hier, precision_hier, recall_hier
+from metrics.hier import f1_hier, precision_hier, recall_hier
 # TODO: refactor to dataloader module
 # TODO: Enable pass dataset matrix  to app 
 # TODO: check if train and test have the sampe y.nunique()
@@ -123,7 +123,8 @@ class Benchmark:
                     try:
                         # print( pipeline.steps[-1][1].predict_path)
                         # pipeline.steps[-1][1].predict_path = True
-                        pipeline.steps[-1][1].set_predictPath(True)
+                        # pipeline.steps[-1][1].set_predictPath(True)
+                        classifier.model.set_predictPath(True)
                     except:
                         print("An exception occurred, set_predictPath failed")
 
@@ -180,6 +181,7 @@ class Benchmark:
                             f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}'),
                             msg_type='content'
                         )
+                # classifier.model.set_predictPath(False)
                 y_test_predict_uncalib = model_selected.predict(X_test)
                 classifier.set_modelFitted(model_selected)
                 # Uncaliberated confidence

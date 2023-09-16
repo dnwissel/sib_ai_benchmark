@@ -4,7 +4,6 @@ from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
-from hiclass.metrics import f1 as f1_hier
 
 import random
 import anndata
