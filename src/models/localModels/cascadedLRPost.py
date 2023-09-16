@@ -132,7 +132,7 @@ class CascadedLRPost:
         self.marginal_probas_full = self.get_marginal_proba(log_probas)
         if self.predict_path:
             return self.marginal_probas_full > threshold
-        return self._inference(self.marginal_probas_full)
+        return self._inference_2(self.marginal_probas_full)
 
     def predict_proba(self, X):
         return self.marginal_probas_full
@@ -164,6 +164,19 @@ class CascadedLRPost:
                 idx = np.argmax(probas[row_idx, preds])
                 y_pred[row_idx] = preds[idx]
         return y_pred.astype(int)
+    
+    def _inference_2(self, probas, threshold=0.5):
+        """Select index of the last 1 on the path as the preds"""
+        predicted = probas > threshold
+        y_pred = np.zeros(predicted.shape[0])
+
+        for row_idx, row in enumerate(predicted):
+            for idx in range(len(row) - 1 , -1, -1):
+                # idx = len(row) - 1 - ridx
+                if row[idx] and idx in self.encoder.label_idx:
+                    y_pred[row_idx] = idx
+                    break
+        return y_pred
         
 params = dict(
         name='CascadedLRPost',

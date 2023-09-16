@@ -86,7 +86,7 @@ class IsotonicRegressionPost:
         probas = self.predict_proba(X)
         if self.predict_path:
             return probas > threshold
-        return self._inference(probas)
+        return self._inference_2(probas)
 
     #TODO: refactor to a func
     def _inference(self, probas, threshold=0.5):
@@ -115,7 +115,21 @@ class IsotonicRegressionPost:
                 idx = np.argmax(probas[row_idx, preds])
                 y_pred[row_idx] = preds[idx]
         return y_pred.astype(int)
-        
+    
+    #TODO refactor to a module
+    def _inference_2(self, probas, threshold=0.5):
+        """Select index of the last 1 on the path as the preds"""
+        predicted = probas > threshold
+        y_pred = np.zeros(predicted.shape[0])
+
+        for row_idx, row in enumerate(predicted):
+            for idx in range(len(row) - 1 , -1, -1):
+                if row[idx] and idx in self.encoder.label_idx:
+                    y_pred[row_idx] = idx
+                    break
+        return y_pred
+
+
 params = dict(
         name='IsotonicRegressionPost',
         model=IsotonicRegressionPost(),

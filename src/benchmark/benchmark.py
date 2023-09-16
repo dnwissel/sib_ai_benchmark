@@ -113,7 +113,7 @@ class Benchmark:
                     test_row_ids.append(row_ids_split.tolist())
 
                 # Set Hier metric
-                if self.path_eval or classifier.name=='C-HMCNN': #TODO: refactor to general case
+                if self.path_eval: #TODO: refactor to general case
                     f1_hier_ = partial(f1_hier, en=classifier.encoder)
                     recall_hier_ = partial(recall_hier, en=classifier.encoder)
                     precision_hier_ = partial(precision_hier, en=classifier.encoder)
@@ -128,8 +128,7 @@ class Benchmark:
                     except:
                         print("An exception occurred, set_predictPath failed")
 
-                    if self.path_eval:
-                        outer_metrics = {'f1_hier': f1_hier_, 'recall_hier': recall_hier_, 'precision_hier': precision_hier_}
+                    outer_metrics = {'f1_hier': f1_hier_, 'recall_hier': recall_hier_, 'precision_hier': precision_hier_}
                 # Fine-tuned model 
                 if not param_grid:
                     model_selected = pipeline
