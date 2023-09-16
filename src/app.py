@@ -119,7 +119,7 @@ def main():
             'balanced_accuracy_score': balanced_accuracy_score, 
             'f1_score_macro': f1_score_macro, 
             'f1_score_weighted': f1_score_weighted
-        } if not args.path_eval else 'f1_hier',
+        },
         task_name=task_name,
         is_pre_splits=exp_cfg['is_pre_splits'],
         path_eval=args.path_eval

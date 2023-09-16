@@ -49,7 +49,7 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
         if hasattr(self, 'predict_path') and self.predict_path:
             return constrained_out > threshold
             
-        preds = self._inference(constrained_out)
+        preds = self._inference_2(constrained_out)
         return preds
 
     def _inference(self, constrained_output):
@@ -86,9 +86,9 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
         y_pred = np.zeros(predicted.shape[0])
 
         for row_idx, row in enumerate(predicted):
-            for ridx in range(len(row) - 1 , -1, -1):
-                idx = len(row) - 1 - ridx
-                if idx in elf.module.en.label_idx:
+            for idx in range(len(row) - 1 , -1, -1):
+                # idx = len(row) - 1 - ridx
+                if row[idx] and idx in self.module.en.label_idx:
                     y_pred[row_idx] = idx
                     break
         return y_pred
@@ -212,7 +212,7 @@ tuning_space={
 model=NeuralNetClassifierHier_1(
             module=C_HMCNN,
             # max_epochs=30,
-            max_epochs=1 if cfg.debug else 30,
+            max_epochs=3 if cfg.debug else 30,
             criterion=MCLoss,
             train_split=None,
             # train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 
