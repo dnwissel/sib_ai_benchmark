@@ -182,10 +182,11 @@ class Benchmark:
                             msg_type='content'
                         )
                 # classifier.model.set_predictPath(False)
-                try:
-                    model_selected.best_estimator_.steps[-1][1].set_predictPath(False)
-                except:
-                    pass
+                if not self.path_eval:
+                    try:
+                        model_selected.best_estimator_.steps[-1][1].set_predictPath(False)
+                    except:
+                        pass
 
                 y_test_predict_uncalib = model_selected.predict(X_test)
                 # print(y_test_predict_uncalib)

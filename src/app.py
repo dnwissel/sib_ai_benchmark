@@ -108,6 +108,9 @@ def main():
     if deselected_models is not None:
         task_name = task_name + '_wo_' + '-'.join(deselected_models)
     
+    if args.path_eval:
+        task_name = task_name + '_path-eval'
+        
     f1_score_macro = partial(f1_score, average='macro')
     f1_score_weighted = partial(f1_score, average='weighted')
 
