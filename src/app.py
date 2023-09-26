@@ -79,6 +79,14 @@ def main():
         action='store_true',
         help="Evaluate Path"
     )
+
+    parser.add_argument(
+        '-x',
+        "--extra",
+        default=None,
+        help="Evaluate Path"
+    )
+
     args = parser.parse_args()
 
     # Load data
@@ -103,14 +111,17 @@ def main():
     # Run benchmark
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
 
-    model_type = '-'.join(model_type) if isinstance(model_type, list) else model_type
+    model_type = '_'.join(model_type) if isinstance(model_type, list) else model_type
     task_name = exp_name + '_' + model_type 
     if deselected_models is not None:
-        task_name = task_name + '_wo_' + '-'.join(deselected_models)
+        task_name = task_name + '_wo_' + '_'.join(deselected_models)
     
     if args.path_eval:
         task_name = task_name + '_path-eval'
-        
+    
+    if args.extra:
+        task_name = task_name + '_' + args.extra
+
     f1_score_macro = partial(f1_score, average='macro')
     f1_score_weighted = partial(f1_score, average='weighted')
 

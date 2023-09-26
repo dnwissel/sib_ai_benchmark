@@ -65,12 +65,13 @@ class IsotonicRegressionPost:
                 row[i] = 1
                 row[child] = -1
                 C.append(row)
+        print(np.array(C))
         return np.array(C)
     
     def set_encoder(self, encoder):
         self.encoder = encoder
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, raw=False):
         probas = []
         for cls in self.trained_classifiers:
             if isinstance(cls, int):
@@ -78,6 +79,9 @@ class IsotonicRegressionPost:
             else:
                 col = cls.predict_proba(X)[:, 1] # proba for pos class
             probas.append(col)
+        if raw:
+            return np.array(probas).T
+
         probas =  self.run_IR(np.array(probas).T)
         return probas
 

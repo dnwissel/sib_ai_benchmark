@@ -20,6 +20,9 @@ from scipy.stats import loguniform, uniform, randint
 
 class NeuralNetClassifierHier_2(NeuralNetClassifier):
 
+    def set_predictPath(self, val):
+        self.predict_path = val
+    
     def predict(self, X):
         output = self.forward(X)
         probas = torch.sigmoid(output) # TODO proba
@@ -35,15 +38,7 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
         memo[node] = lh
         return memo[node]
-
-    def _lhs(self, node, en, row, memo):
-        value = memo[node]
-        if value == 1:
-            return value
-        s_prime_pos = list(map(partial(self._lhs, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
-        lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
-        # memo[node] = lh
-        return lh
+        
 
     def _inference(self, probas):
         y_pred = np.zeros(probas.shape[0])

@@ -18,25 +18,6 @@ from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
 class NeuralNetClassifierHier_1(NeuralNetClassifier):
-
-    def __init__(
-            self,
-            module,
-            *args,
-            criterion=torch.nn.NLLLoss,
-            train_split=ValidSplit(5, stratified=True),
-            classes=None,
-            **kwargs
-    ):
-        super(NeuralNetClassifier, self).__init__(
-            module,
-            *args,
-            criterion=criterion,
-            train_split=train_split,
-            **kwargs
-        )
-        self.classes = classes
-        # self.predict_path = True
     
     def set_predictPath(self, val):
         self.predict_path = val
@@ -212,7 +193,7 @@ tuning_space={
 model=NeuralNetClassifierHier_1(
             module=C_HMCNN,
             # max_epochs=30,
-            max_epochs=3 if cfg.debug else 30,
+            max_epochs=30 if cfg.debug else 30,
             criterion=MCLoss,
             train_split=None,
             # train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 

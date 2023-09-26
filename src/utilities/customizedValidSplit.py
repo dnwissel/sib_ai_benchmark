@@ -47,6 +47,7 @@ class CustomizedValidSplit(ValidSplit):
             sampling_rate = 1 - 1 / self.cv 
         else:
             raise ValueError("Not Implemented")
+            
         y = pd.DataFrame(y,  columns=['y'])
         train_y = y.groupby('y', group_keys=False).apply(sample_group, sampling_rate=sampling_rate)
         idx_train = train_y.index
