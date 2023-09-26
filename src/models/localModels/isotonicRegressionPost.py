@@ -3,7 +3,10 @@ import pandas as pd
 
 from sklearn.linear_model import LogisticRegression
 # from sklearn.isotonic import isotonic_regression
-from quadprog import solve_qp
+# from quadprog import solve_qp
+from qpsolvers import solve_qp
+from scipy import sparse
+
 import networkx as nx
 from models.wrapper import WrapperLocal
 
@@ -37,18 +40,41 @@ class IsotonicRegressionPost:
             else:
                 self.trained_classifiers[idx] = self.base_learner.fit(X, node_y)
 
+    # def run_IR(self, probas):
+    #     nodes = self.encoder.G_idx.nodes()
+    #     num_nodes = len(nodes)
+    #     G = np.zeros((num_nodes, num_nodes))
+    #     np.fill_diagonal(G, 1)
+
+    #     C = self._get_C(nodes)
+    #     b = np.zeros(C.shape[0])
+    #     probas_post = []
+    #     for row in probas:
+    #         sol = solve_qp(G, row, C.T, b)
+    #         probas_post.append(sol[0])
+    #     print(sol[0] - row)
+    #     return np.array(probas_post)
+
     def run_IR(self, probas):
+        """ ref to https://qpsolvers.github.io/qpsolvers/quadratic-programming.html"""
         nodes = self.encoder.G_idx.nodes()
         num_nodes = len(nodes)
-        G = np.zeros((num_nodes, num_nodes))
-        np.fill_diagonal(G, 1)
+        P = np.zeros((num_nodes, num_nodes))
+        np.fill_diagonal(P, 1)
 
         C = self._get_C(nodes)
-        b = np.zeros(C.shape[0])
+        G = sparse.csc_matrix(-1 * C)
+        P = sparse.csc_matrix(P)
+
+        h = np.zeros(C.shape[0])
+        lb = np.zeros(C.shape[1])
+        ub = np.ones(C.shape[1])
         probas_post = []
         for row in probas:
-            sol = solve_qp(G, row, C.T, b)
-            probas_post.append(sol[0])
+            q = -1 * row.T
+            x = solve_qp(P, q, G=G, h=h,lb=lb, ub=ub, solver="osqp")
+            probas_post.append(x)
+        # print(x - row)
         return np.array(probas_post)
 
 
@@ -62,10 +88,10 @@ class IsotonicRegressionPost:
             successors = list(self.encoder.G_idx.successors(i))
             for child in successors:
                 row = np.zeros(num_nodes)
-                row[i] = 1
-                row[child] = -1
+                row[i] = 1.0
+                row[child] = -1.0
                 C.append(row)
-        print(np.array(C))
+        # print(np.array(C).shape, num_nodes)
         return np.array(C)
     
     def set_encoder(self, encoder):
