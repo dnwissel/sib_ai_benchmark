@@ -107,7 +107,11 @@ def plot(results, metric_name, path, ncols=2):
         res_tissue = results['datasets'][tn]['model_results']
         res_model =[]
         for mn in model_names:
-            res_model.append(res_tissue[mn]['scores'][metric_name]['full'])
+            #TODO: refactor benchmark
+            if metric_name == 'ece':
+                res_model.append(res_tissue[mn]['ece'])
+            else:
+                res_model.append(res_tissue[mn]['scores'][metric_name]['full'])
         data.append(res_model)
 
     # Plot
@@ -144,10 +148,41 @@ def plot(results, metric_name, path, ncols=2):
     # plt.show()
 
 
+def load_res(path):
+    fns = []
+    for fn in os.listdir(path):
+        if 'pkl' in fn:
+           fns.append(fn)
+    return fns
+
+
 if __name__ == "__main__":
     parent_path = Path(__file__).parents[2]
     path_res = os.path.join(parent_path, "results/")
-    with open(path_res + '/scanvi_bcm_flat_wo_NeuralNet_done', 'rb') as fh:
-        results = pickle.load(fh)
-    metric_name = 'f1_score_macro'
-    plot(results, metric_name, 'test')
+    # with open(path_res + '/scanvi_bcm_flat_wo_NeuralNet_done', 'rb') as fh:
+    #     results = pickle.load(fh)
+    # metric_name = 'balanced_accuracy_score'
+    # plot(results, metric_name, 'test')
+
+    fns = load_res(path_res)
+    print(fns)
+
+    # ece
+    for fn in fns:
+        if 'path-eval' in fn  or 'global' in fn:
+            continue
+
+        with open(path_res + f'/{fn}', 'rb') as fh:
+            results = pickle.load(fh)
+        metric_name = 'ece'
+        plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])
+
+    # balanced_accuracy_score
+    for fn in fns:
+        if 'path-eval' in fn:
+            continue
+
+        with open(path_res + f'/{fn}', 'rb') as fh:
+            results = pickle.load(fh)
+        metric_name = 'balanced_accuracy_score'
+        plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])
