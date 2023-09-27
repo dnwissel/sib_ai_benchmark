@@ -18,17 +18,69 @@ from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 
+from scipy import sparse
+from qpsolvers import solve_qp
+
+
 class NeuralNetClassifierHier_2(NeuralNetClassifier):
 
     def set_predictPath(self, val):
         self.predict_path = val
     
-    def predict(self, X):
+    def predict(self, X, threshold=0.5):
         output = self.forward(X)
-        probas = torch.sigmoid(output) # TODO proba
-        preds = self._inference(probas.to('cpu').data)
+        probas = torch.sigmoid(output) 
+        probas = probas.to('cpu').numpy()
+        
+        if hasattr(self, 'predict_path') and self.predict_path:
+            probas_consitant = self.run_IR(probas)
+            return self._inference_path(probas) > threshold
+
+        preds = self._inference(probas)
         return preds
     
+    def run_IR(self, probas):
+            """ 
+            ref to https://qpsolvers.github.io/qpsolvers/quadratic-programming.html
+            """
+
+            nodes = self.module.en.G_idx.nodes()
+            num_nodes = len(nodes)
+            P = np.zeros((num_nodes, num_nodes))
+            np.fill_diagonal(P, 1)
+
+            C = self._get_C(nodes)
+            G = sparse.csc_matrix(-1 * C)
+            P = sparse.csc_matrix(P)
+
+            h = np.zeros(C.shape[0])
+            lb = np.zeros(C.shape[1])
+            ub = np.ones(C.shape[1])
+            probas_post = []
+            for row in probas:
+                q = -1 * row.T
+                x = solve_qp(P, q, G=G, h=h,lb=lb, ub=ub, solver="osqp")
+                probas_post.append(x)
+            # print(x - row)
+            return np.array(probas_post)
+
+
+    def _get_C(self, nodes):
+        """
+        Constraint matrix for quadratic prog, ensure that, pi < pj, if j is a parent of i.
+        """
+        num_nodes = len(nodes)
+        C = []
+        for i in range(num_nodes):
+            successors = list(self.module.en.G_idx.successors(i))
+            for child in successors:
+                row = np.zeros(num_nodes)
+                row[i] = 1.0
+                row[child] = -1.0
+                C.append(row)
+        # print(np.array(C).shape, num_nodes)
+        return np.array(C)
+
 
     def _lhs_dp(self, node, en, row, memo):
         value = memo[node]
@@ -42,7 +94,7 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
 
     def _inference(self, probas):
         y_pred = np.zeros(probas.shape[0])
-        for row_idx, row in enumerate(probas.data):
+        for row_idx, row in enumerate(probas):
             memo = np.zeros(len(self.module.en.G_idx.nodes())) - 1
             for root in self.module.en.roots_idx:
                 memo[root] = 1
@@ -50,9 +102,26 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
             lhs = np.zeros(len(self.module.en.label_idx))
             for idx, label in enumerate(self.module.en.label_idx):
                 lh_ = self._lhs_dp(label, self.module.en, row, memo)
-                lh_children = torch.prod(1 -  row[list(self.module.en.successor_dict[label])])
+                lh_children = np.prod(1 -  row[list(self.module.en.successor_dict[label])])
                 lhs[idx] = lh_ * lh_children
             y_pred[row_idx] = self.module.en.label_idx[np.argmax(lhs)]
+        return y_pred
+
+    def _inference_path(self, probas):
+        y_pred = np.zeros(probas.shape)
+        num_nodes = probas.shape[1]
+        for row_idx, row in enumerate(probas):
+            memo = np.zeros(num_nodes) - 1
+
+            for root in self.module.en.roots_idx:
+                memo[root] = 1
+
+            lhs = np.zeros(num_nodes)
+            for label in range(num_nodes):
+                lh_ = self._lhs_dp(label, self.module.en, row, memo)
+                lh_children = np.prod(1 -  row[list(self.module.en.successor_dict[label])])
+                lhs[label] = lh_ * lh_children
+            y_pred[row_idx] = lhs
         return y_pred
 
 
