@@ -20,6 +20,7 @@ from scipy.stats import loguniform, uniform, randint
 
 from scipy import sparse
 from qpsolvers import solve_qp
+import matplotlib.pyplot as plt
 
 
 class NeuralNetClassifierHier_2(NeuralNetClassifier):
@@ -33,8 +34,9 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         probas = probas.to('cpu').numpy()
         
         if hasattr(self, 'predict_path') and self.predict_path:
+            probas = self._inference_path(probas)
             probas_consitant = self.run_IR(probas)
-            return self._inference_path(probas) > threshold
+            return probas_consitant > threshold
 
         preds = self._inference(probas)
         return preds
@@ -57,11 +59,48 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
             lb = np.zeros(C.shape[1])
             ub = np.ones(C.shape[1])
             probas_post = []
+
+            cnt = 0
             for row in probas:
+                # print(row)
                 q = -1 * row.T
-                x = solve_qp(P, q, G=G, h=h,lb=lb, ub=ub, solver="osqp")
+                x = solve_qp(0.5 * P, q, G=G, h=h,lb=lb, ub=ub, solver="osqp")
                 probas_post.append(x)
-            # print(x - row)
+
+                # plot
+                if cnt % 1000 == 0:
+                    # print(x - row)
+                    optimal = x
+                    diff = x - row
+                    num_nodes = len(x)
+                    x = range(num_nodes)
+                    # Create a figure and a grid of subplots
+                    fig, axs = plt.subplots(3, 1)
+
+                    # Plot on each subplot
+                    axs[0].plot(x, row, marker='o', linestyle='-')
+                    axs[1].plot(x, optimal, marker='o', linestyle='-')
+                    axs[2].plot(x, diff, marker='o', linestyle='-')
+
+                    # Set y-label for each subplot
+                    axs[0].set_ylabel('raw')
+                    axs[1].set_ylabel('optimal')
+                    axs[2].set_ylabel('diff')
+
+                    plt.xlabel('Node_index')
+                    # plt.ylabel('value')
+                    # plt.title('Plot of a Sequence of Numbers')
+                    
+                    for ax in axs[:2]:
+                        ax.axhline(y=0.5, color='r', linestyle='dotted')
+                    axs[2].axhline(y=0, color='g', linestyle='dotted')
+                    
+                    plt.subplots_adjust(hspace=0.4)
+
+                    plt.savefig(f'figure_{cnt}')
+                    plt.close()
+                cnt += 1
+
             return np.array(probas_post)
 
 
@@ -78,7 +117,7 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
                 row[i] = 1.0
                 row[child] = -1.0
                 C.append(row)
-        # print(np.array(C).shape, num_nodes)
+        # print(np.array(C)[:5])
         return np.array(C)
 
 
@@ -96,10 +135,11 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         y_pred = np.zeros(probas.shape[0])
         for row_idx, row in enumerate(probas):
             memo = np.zeros(len(self.module.en.G_idx.nodes())) - 1
-            for root in self.module.en.roots_idx:
-                memo[root] = 1
-
+            
             lhs = np.zeros(len(self.module.en.label_idx))
+            for root in self.module.en.roots_idx:
+                memo[root] = 1.0
+
             for idx, label in enumerate(self.module.en.label_idx):
                 lh_ = self._lhs_dp(label, self.module.en, row, memo)
                 lh_children = np.prod(1 -  row[list(self.module.en.successor_dict[label])])
@@ -108,21 +148,27 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         return y_pred
 
     def _inference_path(self, probas):
-        y_pred = np.zeros(probas.shape)
+        probas_margin = np.zeros(probas.shape)
         num_nodes = probas.shape[1]
         for row_idx, row in enumerate(probas):
             memo = np.zeros(num_nodes) - 1
 
-            for root in self.module.en.roots_idx:
-                memo[root] = 1
-
             lhs = np.zeros(num_nodes)
+            for root in self.module.en.roots_idx:
+                # print(root)
+                lhs[root] = 1.0
+                memo[root] = 1.0
+
             for label in range(num_nodes):
+                if label in self.module.en.roots_idx:
+                    continue
+
                 lh_ = self._lhs_dp(label, self.module.en, row, memo)
                 lh_children = np.prod(1 -  row[list(self.module.en.successor_dict[label])])
-                lhs[label] = lh_ * lh_children
-            y_pred[row_idx] = lhs
-        return y_pred
+                # lhs[label] = lh_ * lh_children
+                lhs[label] = lh_
+            probas_margin[row_idx] = lhs
+        return probas_margin
 
 
 class MaskBCE(nn.Module):

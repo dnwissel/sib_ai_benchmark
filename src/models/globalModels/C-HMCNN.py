@@ -193,7 +193,7 @@ tuning_space={
 model=NeuralNetClassifierHier_1(
             module=C_HMCNN,
             # max_epochs=30,
-            max_epochs=30 if cfg.debug else 30,
+            max_epochs=1 if cfg.debug else 30,
             criterion=MCLoss,
             train_split=None,
             # train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), # set later In case of intraDataset 

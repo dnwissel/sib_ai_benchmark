@@ -72,7 +72,7 @@ class IsotonicRegressionPost:
         probas_post = []
         for row in probas:
             q = -1 * row.T
-            x = solve_qp(P, q, G=G, h=h,lb=lb, ub=ub, solver="osqp")
+            x = solve_qp(0.5 * P, q, G=G, h=h,lb=lb, ub=ub, solver="osqp")
             probas_post.append(x)
         # print(x - row)
         return np.array(probas_post)
@@ -97,7 +97,7 @@ class IsotonicRegressionPost:
     def set_encoder(self, encoder):
         self.encoder = encoder
 
-    def predict_proba(self, X, raw=False):
+    def predict_proba(self, X, raw=True):
         probas = []
         for cls in self.trained_classifiers:
             if isinstance(cls, int):
