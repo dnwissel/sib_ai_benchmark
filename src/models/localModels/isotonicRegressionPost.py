@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 # from sklearn.isotonic import isotonic_regression
 # from quadprog import solve_qp
 from qpsolvers import solve_qp
@@ -16,6 +17,7 @@ class IsotonicRegressionPost:
             self,
             encoder=None,
             base_learner=LogisticRegression(max_iter=1000, class_weight='balanced'),
+            # base_learner=SVC(max_iter=10000,  C=0.02, class_weight='balanced', probability=True, gamma='auto'),
         ):
         self.encoder = encoder
         self.trained_classifiers = None
@@ -39,8 +41,9 @@ class IsotonicRegressionPost:
                 self.trained_classifiers[idx] = int(unique_node_y[0])
             else:
                 self.trained_classifiers[idx] = self.base_learner.fit(X, node_y)
-
-    # def run_IR(self, probas):
+        # print(self.trained_classifiers)
+        
+    # def run_IR(self, probas)
     #     nodes = self.encoder.G_idx.nodes()
     #     num_nodes = len(nodes)
     #     G = np.zeros((num_nodes, num_nodes))
@@ -97,7 +100,7 @@ class IsotonicRegressionPost:
     def set_encoder(self, encoder):
         self.encoder = encoder
 
-    def predict_proba(self, X, raw=True):
+    def predict_proba(self, X, raw=False):
         probas = []
         for cls in self.trained_classifiers:
             if isinstance(cls, int):
@@ -115,6 +118,14 @@ class IsotonicRegressionPost:
     def predict(self, X, threshold=0.5):
         probas = self.predict_proba(X)
         if self.predict_path:
+            # preds = []
+            # for cls in self.trained_classifiers:
+            #     if isinstance(cls, int):
+            #         col = np.repeat([cls], X.shape[0])
+            #     else:
+            #         col = cls.predict(X) # proba for pos class
+            #     preds.append(col)
+            # return np.array(preds).T
             return probas > threshold
         return self._inference_2(probas)
 

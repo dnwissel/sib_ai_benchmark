@@ -62,6 +62,7 @@ class Benchmark:
 
     def _train(self, inner_cv, inner_metrics, outer_metrics, outer_cv=None, dataset=None, pre_splits=None):
         true_labels_test = []
+        nodes_label = []
         test_row_ids = []
         res = {}
         for classifier in self.classifiers:
@@ -110,6 +111,8 @@ class Benchmark:
 
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
+                    if hasattr(classifier, 'encoder'):
+                        nodes_label.append(classifier.encoder.labels_ordered)
                     test_row_ids.append(row_ids_split.tolist())
 
                 # Set Hier metric
@@ -256,7 +259,7 @@ class Benchmark:
             
             self.logger.write('', msg_type='content')
 
-        return res, true_labels_test, test_row_ids
+        return res, true_labels_test, test_row_ids, nodes_label
     
 
     def save(self, dir):
@@ -307,15 +310,17 @@ class Benchmark:
                 inner_cv = LeaveOneGroupOut()
                 
             if not is_pre_splits:
-                model_results, true_labels_test, test_row_ids = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
+                model_results, true_labels_test, test_row_ids, nodes_label = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
             else:
-                model_results, true_labels_test, test_row_ids = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv,pre_splits=dataset)
+                model_results, true_labels_test, test_row_ids, nodes_label = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv,pre_splits=dataset)
 
             self.results.setdefault('datasets', {}).update({dn: {
                 'model_results': model_results, 
                 'true_labels_test': true_labels_test,
-                'test_row_ids': test_row_ids
+                'test_row_ids': test_row_ids,
+                'nodes_label': nodes_label
             }})
+            # print(nodes_label)
             
 
         self.logger.write(

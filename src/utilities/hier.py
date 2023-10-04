@@ -7,36 +7,33 @@ import networkx as nx
 
 class Encoder:
     def __init__(self, G_full, roots_label):
+        self.G_full = G_full
+        self.roots_label = roots_label
+
         self.G_idx = None
         self.G_label = None
-        self.G_full = G_full
-
         self.roots_idx = None
-        self.idx_label = None
         self.node_map = None
-        self.roots_label = roots_label
+        self.labels_ordered = None
         self.predecessor_dict = {}
         self.successor_dict = {}
 
     def fit(self, y):
-        # print(y.unique())`
         ancestors = [nx.ancestors(self.G_full,n) for n in y.unique()]
         ancestors = set(itertools.chain(*ancestors))
         self.G_label = self.G_full.subgraph(ancestors | set(y.unique()))
-        # self.G_full.remove_nodes_from([n for n in self.G_full if n not in (ancestors | set(y.unique()))])
-        # self.G_label = self.G_full
+
         # Check root node
         root_list = []
         for node in self.G_label.nodes():
             if self.G_label.out_degree(node) > 0 and self.G_label.in_degree(node) == 0:
                 root_list.append(node)
-        if len(root_list) == 1:
-            root = root_list[0]
-            nodes = sorted(self.G_label.nodes(), key=lambda x: (nx.shortest_path_length(self.G_label, root, x), x)) # sort with x if same shorted path len
-            self.node_map = dict(zip(nodes, range(len(nodes))))
-            # print( self.node_map)
-        else:
-            raise ValueError('More than one root found')
+        assert len(root_list) == 1, 'More than one root found'
+
+        root = root_list[0]
+        nodes = sorted(self.G_label.nodes(), key=lambda x: (nx.shortest_path_length(self.G_label, root, x), x)) # sort with x if same shorted path len
+        self.labels_ordered = nodes
+        self.node_map = dict(zip(nodes, range(len(nodes))))
 
         adjacency_matrix = np.array(nx.adjacency_matrix(self.G_label, nodelist=nodes).todense())
         self.G_idx = nx.DiGraph(adjacency_matrix)
@@ -51,7 +48,8 @@ class Encoder:
         return self
 
     def transform(self, y, is_idx=True):
-        # print(y.unique())
+        assert self.G_idx is not None, 'Encoder is not fitted.'
+
         return self._encode_y(y, is_idx)
 
 

@@ -189,6 +189,9 @@ class WrapperHier(Wrapper):
             # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
             return proba, net.forward(pl_pp.transform(X))
 
+        def calibrate(self):
+            pass
+
 
 class WrapperHierCS(Wrapper):
 
