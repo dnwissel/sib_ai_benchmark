@@ -33,6 +33,16 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
         preds = self._inference_2(constrained_out)
         return preds
 
+    def predict_proba(self, X):
+        output = self.forward(X)
+        constrained_out = get_constr_out(output, self.module.en.get_R())
+        constrained_out = constrained_out.to('cpu')
+        probas = F.sigmoid(constrained_out).numpy()
+
+        probas[:, self.module.en.roots_idx] = 1.0
+        logits = constrained_out.numpy()
+        return probas, logits
+
     def _inference(self, constrained_output):
         predicted = constrained_output.data > 0.5
         y_pred = np.zeros(predicted.shape[0])
@@ -73,6 +83,7 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
                     y_pred[row_idx] = idx
                     break
         return y_pred
+
 
 
 def get_constr_out(x, R):

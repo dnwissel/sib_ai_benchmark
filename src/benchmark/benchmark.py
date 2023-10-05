@@ -111,7 +111,7 @@ class Benchmark:
 
                 if len(true_labels_test) < n_splits:
                     true_labels_test.append(y_test.tolist())
-                    if hasattr(classifier, 'encoder'):
+                    if classifier.encoder is not None:
                         nodes_label.append(classifier.encoder.labels_ordered)
                     test_row_ids.append(row_ids_split.tolist())
 
@@ -204,30 +204,51 @@ class Benchmark:
                 y_test_proba_uncalib = []
                 y_test_predict_calib = []
                 ece = []
-                if isinstance(classifier, WrapperHier) or isinstance(classifier, WrapperLocal) or isinstance(classifier, WrapperHierCS):
-                    pass
-                else:
-                    if logits is not None:
-                        # model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
-                        model_calibrated = CalibratedClassifier(classifier)
-                        model_calibrated.fit(X_val_cal, y_val_cal)
 
-                        y_test_predict_calib = model_calibrated.predict(X_test)
-                        y_test_proba_calib_all = model_calibrated.predict_proba(X_test).astype(float)
-                        for sample_idx, class_idx in enumerate(y_test_predict_calib):
-                            # print(y_test_proba_calib_all)
-                            # print(sample_idx, class_idx)
-                            y_test_proba_calib.append(y_test_proba_calib_all[sample_idx, class_idx])
-                            if y_test_proba_uncalib_all is not None:
-                                y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
-                        y_test_predict_calib = y_test_predict_calib.tolist()
+                #TODO: refactor to wrapper
+                if isinstance(classifier, WrapperHier) or isinstance(classifier, WrapperLocal) or isinstance(classifier, WrapperHierCS):
+                    model_type = 'hier'
+                else: 
+                    model_type ='flat'
+
+                if logits is not None:
+                    # model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
+                    model_calibrated = CalibratedClassifier(classifier, type=model_type, encoder=classifier.encoder)
+                    model_calibrated.fit(X_val_cal, y_val_cal)
+
+                    y_test_predict_calib = model_calibrated.predict(X_test)
+                    y_test_proba_calib_all = model_calibrated.predict_proba(X_test).astype(float)
+                    for sample_idx, class_idx in enumerate(y_test_predict_calib):
+                        # print(y_test_proba_calib_all)
+                        # print(sample_idx, class_idx)
+                        y_test_proba_calib.append(y_test_proba_calib_all[sample_idx, class_idx])
+                        if y_test_proba_uncalib_all is not None:
+                            y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
+                    # y_test_predict_calib = y_test_predict_calib.tolist()
+                    y_test_proba_calib = np.array(y_test_proba_calib)
+
+                    if model_type == 'hier':
+                        y_test_proba_uncalib = y_test_proba_uncalib_all
+                        sum = 0
+                        y_test_encoded = classifier.encoder.transform(y_test)
+                        num_col = y_test_encoded.shape[1]
+                        y_test_predict_calib = y_test_proba_calib > 0.5 
+                        for col_idx in range(num_col):
+                            # ece_col = calibration_error(y_test_encoded[:, col_idx], y_test_predict_calib[:, col_idx], y_test_proba_calib[:, col_idx])
+                            ece_col = calibration_error(y_test_encoded[:, col_idx], np.array(y_test_predict_uncalib)[:, col_idx], np.array(y_test_proba_uncalib)[:, col_idx])
+                            sum += ece_col
+
+                        ece = sum / num_col
+                    else:
                         ece = calibration_error(y_test, y_test_predict_calib, y_test_proba_calib)
-                    else: #TODO reafactor to func
-                        for sample_idx, class_idx in enumerate(y_test_predict_uncalib):
-                            if y_test_proba_uncalib_all is not None:
-                                y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
-                        # y_test_predict_calib = y_test_predict_calib.tolist()
-                        ece = calibration_error(y_test, y_test_predict_uncalib, y_test_proba_uncalib)
+                else: #TODO reafactor to func
+                    for sample_idx, class_idx in enumerate(y_test_predict_uncalib):
+                        if y_test_proba_uncalib_all is not None:
+                            y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
+                    # y_test_predict_calib = y_test_predict_calib.tolist()
+                    ece = calibration_error(y_test, y_test_predict_uncalib, y_test_proba_uncalib)
+
+                # print(ece)
 
                 model_result.setdefault('predicts_calib', []).append(y_test_predict_calib) 
                 model_result.setdefault('predicts_uncalib', []).append(y_test_predict_uncalib.tolist()) 
@@ -237,6 +258,10 @@ class Benchmark:
                 model_result.setdefault('ece', []).append(ece) 
 
                 y_test_predict = y_test_predict_uncalib 
+                # y_test_predict = y_test_proba_calib > 0.5 
+
+                # print(y_test_proba_calib)
+                # print(y_test_proba_uncalib_all)
 
                 # Calculate metrics
                 for metric_name, metric in outer_metrics.items():

@@ -10,7 +10,7 @@ import torch
 
 
 class Wrapper:
-    def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, is_selected=True): 
+    def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, calibrater=None, is_selected=True): 
         # TODO: Move sample to app.Define sampling rate
         # TODO: Add multiple pre-processing steps
         # TODO: Method to change default value of is_selected
@@ -19,16 +19,17 @@ class Wrapper:
         self.__validate_input()
 
         self.model = model
-        self.model_fitted = None
         self.name = name
         self.tuning_space = tuning_space
         self.preprocessing_steps = preprocessing_steps
         self.preprocessing_params = preprocessing_params
         self.is_selected = is_selected
+        self.model_fitted = None
         self.best_params = None
         self.g_global = None
         self.roots_label = None
         self.encoder = None
+        self.calibrater = calibrater
 
     def predict_proba(self, model_fitted, X):
         return model_fitted.predict_proba(X), None
@@ -73,6 +74,7 @@ class Wrapper:
 
         #TODO: Validates fit and predict methods in model
 
+    
 
 class WrapperSVM(Wrapper):
 
@@ -183,11 +185,10 @@ class WrapperHier(Wrapper):
 
 
         def predict_proba(self, model_fitted, X):
-            proba = model_fitted.predict_proba(X)
-            pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
-            net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
-            # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
-            return proba, net.forward(pl_pp.transform(X))
+            proba, logits = model_fitted.predict_proba(X)
+            # pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
+            # net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
+            return proba, logits
 
         def calibrate(self):
             pass

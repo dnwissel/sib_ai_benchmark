@@ -6,6 +6,7 @@ from sklearn.linear_model import LogisticRegression
 from quadprog import solve_qp
 import networkx as nx
 from models.wrapper import WrapperLocal
+from sklearn.base import clone
 
 
 class CascadedLRPost:
@@ -36,7 +37,8 @@ class CascadedLRPost:
             if len(unique_node_y) == 1:
                 cls = unique_node_y[0]
             else:
-                cls = self.base_learner.fit(X, node_y)
+                cls = clone(self.base_learner)
+                cls = cls.fit(X, node_y)
             self.trained_classifiers[idx] = cls
 
     # def fit_LR(self, probas):

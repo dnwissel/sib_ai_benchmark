@@ -11,13 +11,18 @@ else:
 class VectorScaling(nn.Module):
     def __init__(self, logits_len):
         super().__init__()
-        self.W = torch.diag(nn.Parameter(torch.ones(logits_len) * 1.5))
-        self.b = nn.Parameter(torch.zeros(logits_len) + 0.1)
-        self.params = [self.W, self.b]
+        self.W = nn.Parameter(torch.ones(logits_len) * 1.0)
+        # self.b = nn.Parameter(torch.zeros(logits_len) + 0.1)
+        # self.params = [self.W, self.b]
+        self.params = [self.W]
 
     def forward(self, logits):
-        logits = torch.matmul(logits, self.W) + self.b
-        return F.softmax(logits, dim=-1)
+        # logits = logits * self.W + self.b
+        logits = logits * self.W 
+        # logits = torch.matmul(logits, self.W)
+        # return F.softmax(logits, dim=-1)
+        # print(self.W)
+        return logits
 
 
 class MatrixScaling(nn.Module):
@@ -27,7 +32,7 @@ class MatrixScaling(nn.Module):
         self.params = [self.layer.state_dict()['weight'], self.layer.state_dict()['bias']]
 
     def forward(self, logits):
-        return F.softmax(self.layer(logits), dim=-1)
+        return self.layer(logits)
 
 
 class TemperatureScaling(nn.Module):
@@ -37,5 +42,6 @@ class TemperatureScaling(nn.Module):
         self.params = [self.temperature]
 
     def forward(self, logits):
-        return F.softmax(logits / self.temperature, dim=-1)
+        return logits / self.temperature # logSoftmax in CrossEntropyLoss()
+        # return F.softmax(/logits / self.temperature, dim=-1)
 

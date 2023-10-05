@@ -10,6 +10,7 @@ from scipy import sparse
 
 import networkx as nx
 from models.wrapper import WrapperLocal
+from sklearn.base import clone
 
 
 class IsotonicRegressionPost:
@@ -38,25 +39,15 @@ class IsotonicRegressionPost:
         for idx, node_y in enumerate(node_indicators):
             unique_node_y = np.unique(node_y)
             if len(unique_node_y) == 1:
-                self.trained_classifiers[idx] = int(unique_node_y[0])
+                cls = int(unique_node_y[0])
             else:
-                self.trained_classifiers[idx] = self.base_learner.fit(X, node_y)
+                cls = clone(self.base_learner)
+                cls = cls.fit(X, node_y)
+
+            self.trained_classifiers[idx] = cls
+
         # print(self.trained_classifiers)
         
-    # def run_IR(self, probas)
-    #     nodes = self.encoder.G_idx.nodes()
-    #     num_nodes = len(nodes)
-    #     G = np.zeros((num_nodes, num_nodes))
-    #     np.fill_diagonal(G, 1)
-
-    #     C = self._get_C(nodes)
-    #     b = np.zeros(C.shape[0])
-    #     probas_post = []
-    #     for row in probas:
-    #         sol = solve_qp(G, row, C.T, b)
-    #         probas_post.append(sol[0])
-    #     print(sol[0] - row)
-    #     return np.array(probas_post)
 
     def run_IR(self, probas):
         """ ref to https://qpsolvers.github.io/qpsolvers/quadratic-programming.html"""
@@ -127,10 +118,10 @@ class IsotonicRegressionPost:
             #     preds.append(col)
             # return np.array(preds).T
             return probas > threshold
-        return self._inference_2(probas)
+        return self._inference_1(probas)
 
     #TODO: refactor to a func
-    def _inference(self, probas, threshold=0.5):
+    def _inference_1(self, probas, threshold=0.5):
         predicted = probas > threshold
         y_pred = np.zeros(predicted.shape[0])
         for row_idx, row in enumerate(predicted):
