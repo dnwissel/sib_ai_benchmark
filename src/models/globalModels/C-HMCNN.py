@@ -11,11 +11,15 @@ import numpy as np
 import networkx as nx
 from config import cfg
 
-from models.wrapper import WrapperHier
+from models.wrapper import WrapperCHMC
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
+
+from calibration.calibrate_model import CalibratedClassifier
+from loss.hier import MCLoss, get_constr_out
+
 
 class NeuralNetClassifierHier_1(NeuralNetClassifier):
     
@@ -83,56 +87,6 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
                     y_pred[row_idx] = idx
                     break
         return y_pred
-
-
-
-def get_constr_out(x, R):
-    """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
-    
-    # x = x.to(device)
-    # R = R.to(device)
-
-    # Not enough mem in GPU, calculate on CPU
-    x = x.to('cpu')
-    R = R.to('cpu')
-
-    x = torch.sigmoid(x)
-    c_out = x.double()
-    c_out = c_out.unsqueeze(1)
-    c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
-    R_batch = R.expand(len(x),R.shape[1], R.shape[1])
-    final_out, _ = torch.max(R_batch*c_out.double(), dim = 2)
-    # put back on GPU
-    final_out = final_out.to(device)
-
-    return final_out
-
-
-class MCLoss(nn.Module):
-    def __init__(self, en, idx_to_eval):
-        super().__init__()
-        self.idx_to_eval = idx_to_eval
-        # self.criterion = nn.BCEWithLogitsLoss()
-        self.criterion = nn.BCELoss()
-        self.en = en
-
-    def forward(self, output, target):
-        # print(target)
-        target = self.en.transform(target.cpu().numpy())
-        target = target.astype(np.double)
-        target = torch.from_numpy(target).to(device)
-
-        constr_output = get_constr_out(output, self.en.get_R())
-        train_output = target*output.double()
-        train_output = get_constr_out(train_output, self.en.get_R())
-        train_output = (1-target)*constr_output.double() + target*train_output
-
-        #MCLoss
-        # print(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
-        # mask = train_output < 0
-        # train_output[mask] = 0
-        loss = self.criterion(train_output[:,self.idx_to_eval ], target[:,self.idx_to_eval])
-        return loss
 
 
 class C_HMCNN(nn.Module):
@@ -214,19 +168,21 @@ model=NeuralNetClassifierHier_1(
             device=device
         )
 
+
 params = dict(
         name='C-HMCNN',
         model=model,
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
-        preprocessing_steps=[('StandardScaler', StandardScaler(with_mean=False))],
+        preprocessing_steps=[('StandardScaler', StandardScaler())],
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space=tuning_space,
-        # data_shape_required=True    
+        # data_shape_required=True 
+        calibrater=CalibratedClassifier
 )
 
 
 # Please don't change this line
-wrapper = WrapperHier(**params)
+wrapper = WrapperCHMC(**params)
 
 
 if __name__ == "__main__":

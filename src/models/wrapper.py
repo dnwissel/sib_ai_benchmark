@@ -8,6 +8,8 @@ from utilities import dataLoader  as dl
 import numpy as np
 import torch
 
+from metrics.calibration_error import calibration_error
+
 
 class Wrapper:
     def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, calibrater=None, is_selected=True): 
@@ -24,15 +26,15 @@ class Wrapper:
         self.preprocessing_steps = preprocessing_steps
         self.preprocessing_params = preprocessing_params
         self.is_selected = is_selected
+        self.calibrater_class = calibrater
         self.model_fitted = None
         self.best_params = None
         self.g_global = None
         self.roots_label = None
         self.encoder = None
-        self.calibrater = calibrater
 
-    def predict_proba(self, model_fitted, X):
-        return model_fitted.predict_proba(X), None
+    def predict_proba(self, X):
+        return self.model_fitted.predict_proba(X), None
 
     def set_gGlobal(self, g, roots):
         self.g_global = g
@@ -74,12 +76,53 @@ class Wrapper:
 
         #TODO: Validates fit and predict methods in model
 
+    def calculate_ece(self, y_test, y_test_pred,  probas):
+        ece = calibration_error(y_test, y_test_pred,  probas)
+        return ece
+
+
+class WrapperHier(Wrapper):
+    def calculate_ece_path(self, y_true_encoded, y_test_pred,  probas):
+        sum = 0
+        # sum_uc = 0
+        # y_true_encoded = self.encoder.transform(y_test)
+        num_col = y_true_encoded.shape[1]
+        num_row = y_true_encoded.shape[0]
+        # y_test_pred = probas > 0.5 
+        # y_test_pred = y_test_pred.astype(int)
+
+        for col_idx in range(num_col):
+            if col_idx in self.encoder.roots_idx:
+                continue
+
+            #  set proba of entry 0 as 1 - P_pos
+            idxs = np.arange(num_row)
+            y_true_col = y_true_encoded[:, col_idx]
+            proba_col = probas[:, col_idx]
+            # proba_uncalib_col = np.array(probas)[:, col_idx]
+            mask = (y_true_col == 0)
+            idxs_0 =idxs[mask]
+            # print(idxs_0)
+
+            proba_col[idxs_0] = 1 - proba_col[idxs_0]
+            # proba_uncalib_col[idxs_0] = 1 - proba_uncalib_col[idxs_0]
+
+            ece_col = calibration_error(y_true_col, y_test_pred[:, col_idx], proba_col)
+            # ece_col_uc = calibration_error(y_true_col, np.array(y_test_pred_uncalib)[:, col_idx], proba_uncalib_col)
+            
+            sum += ece_col
+            # sum_uc += ece_col_uc
+
+        num_col -= len(self.encoder.roots_idx)
+        ece = sum / num_col
+        # ece_uc = sum_uc / num_col
+        return ece
     
 
 class WrapperSVM(Wrapper):
 
-        def predict_proba(self, model_fitted, X):
-                confidence = model_fitted.decision_function(X)
+        def predict_proba(self, X):
+                confidence = self.model_fitted.decision_function(X)
                 if confidence.ndim == 1 or confidence.shape[1] == 1:
                         confidence = np.reshape(confidence, (-1, 1))
                         confidence = np.concatenate((-1 * confidence, 1 * confidence), axis=1) # label 1 considered as positive, 
@@ -120,20 +163,19 @@ class WrapperNN(Wrapper):
 
             return pipeline, param_grid, y_train, y_test
 
-        def predict_proba(self, model_fitted, X):
-            proba = model_fitted.predict_proba(X)
-            pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
-            net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
+        def predict_proba(self, X):
+            proba = self.model_fitted.predict_proba(X)
+            pl_pp = Pipeline(self.model_fitted.best_estimator_.steps[:-1])
+            net = self.model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
             # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
             logits = net.forward(pl_pp.transform(X)).to('cpu').data
             return proba, logits
 
 
 
-class WrapperHier(Wrapper):
+class WrapperCHMC(WrapperHier):
 
         def init_model(self, X, train_y_label, test_y_label):
-
             # Define pipeline and param_grid
             param_grid = {}
             if self.tuning_space:
@@ -162,10 +204,6 @@ class WrapperHier(Wrapper):
                  y_test.append(en.node_map.get(lable, -1))
             y_test = np.array(y_test)
 
-            # print(y_train, y_test)
-            nodes = en.G_idx.nodes()
-            idx_to_eval = list(set(nodes) - set(en.roots_idx))
-
             # Set input dim for NN
             try:
                 num_feature = pipeline['DimensionReduction'].n_components
@@ -176,25 +214,36 @@ class WrapperHier(Wrapper):
                  module__en=en,
                  module__dim_in=num_feature,
                  module__dim_out=len(en.G_idx.nodes()), 
-                 criterion__en=en,
-                 criterion__idx_to_eval=idx_to_eval
+                 criterion__encoder=en,
             ) 
 
-            # y = y.astype(np.int64)
             return pipeline, param_grid, y_train, y_test
 
+        def fit_calibrater(self, X, y):
+            if self.calibrater_class is not None:
+                self.calibrater = self.calibrater_class(self.model_fitted, encoder=self.encoder) #TODO: refactor
+                self.calibrater = self.calibrater.fit(X, y)
+            
 
-        def predict_proba(self, model_fitted, X):
-            proba, logits = model_fitted.predict_proba(X)
-            # pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
-            # net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
-            return proba, logits
+        def predict_proba(self, X):
+            probas_uncalib, _ = self.model_fitted.predict_proba(X)
+            probas_calib = None
 
-        def calibrate(self):
-            pass
+            if self.calibrater is not None:
+                probas_calib = self.calibrater.predict_proba(X)
+                # print(probas_calib)
+            return probas_calib, probas_uncalib
 
 
-class WrapperHierCS(Wrapper):
+        def predict(self, X, threshold=0.5):
+            preds_uncalib = self.model_fitted.predict(X)
+
+            probas_calib, _ = self.predict_proba(X)
+            preds_calib = probas_calib > threshold
+            # print(preds_calib)
+            return preds_calib, preds_uncalib
+
+class WrapperCS(WrapperHier):
 
         def init_model(self, X, train_y_label, test_y_label):
             # Define pipeline and param_grid
@@ -248,15 +297,15 @@ class WrapperHierCS(Wrapper):
             return pipeline, param_grid, y_train, y_test
 
 
-        def predict_proba(self, model_fitted, X):
-            proba = model_fitted.predict_proba(X)
-            pl_pp = Pipeline(model_fitted.best_estimator_.steps[:-1])
-            net = model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
+        def predict_proba(self, X):
+            proba = self.model_fitted.predict_proba(X)
+            pl_pp = Pipeline(self.model_fitted.best_estimator_.steps[:-1])
+            net = self.model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
             # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
             return proba, net.forward(pl_pp.transform(X))
 
 
-class WrapperLocal(Wrapper):
+class WrapperLocal(WrapperHier):
 
         def init_model(self, X, train_y_label, test_y_label):
             # Define pipeline and param_grid

@@ -15,6 +15,7 @@ class Encoder:
         self.roots_idx = None
         self.node_map = None
         self.labels_ordered = None
+        self.idx_to_eval = None
         self.predecessor_dict = {}
         self.successor_dict = {}
 
@@ -44,6 +45,8 @@ class Encoder:
         for n in self.G_idx.nodes:
             self.predecessor_dict[n] = list(self.G_idx.predecessors(n))
             self.successor_dict[n] = list(self.G_idx.successors(n))
+        
+        self.idx_to_eval = list(set(self.G_idx.nodes) - set(self.roots_idx))
 
         return self
 

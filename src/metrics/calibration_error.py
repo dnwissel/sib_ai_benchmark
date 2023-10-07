@@ -67,9 +67,8 @@ def calibration_error(y_true, y_pred, y_prob, sample_weight=None, norm='l1',
     #     raise ValueError("pos_label=%r is not a valid label: "
     #                      "%r" % (pos_label, labels))
 
-    y_true, y_pred, y_prob = np.array(y_true), np.array(y_pred),np.array(y_prob)
+    y_true, y_pred, y_prob = np.array(y_true), np.array(y_pred), np.array(y_prob)
     y_true = np.array(y_true == y_pred, int) # changed for multiclass
-    # print(y_true)
 
     norm_options = ('l1', 'l2', 'max')
     if norm not in norm_options:

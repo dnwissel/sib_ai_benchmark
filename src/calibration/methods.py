@@ -12,13 +12,14 @@ class VectorScaling(nn.Module):
     def __init__(self, logits_len):
         super().__init__()
         self.W = nn.Parameter(torch.ones(logits_len) * 1.0)
-        # self.b = nn.Parameter(torch.zeros(logits_len) + 0.1)
-        # self.params = [self.W, self.b]
-        self.params = [self.W]
+        self.b = nn.Parameter(torch.zeros(logits_len) + 0.1)
+        self.params = [self.W, self.b]
+        # self.params = [self.W]
 
     def forward(self, logits):
-        # logits = logits * self.W + self.b
-        logits = logits * self.W 
+        logits = logits * self.W + self.b
+        # logits = logits * self.W 
+        # logits = logits / self.W 
         # logits = torch.matmul(logits, self.W)
         # return F.softmax(logits, dim=-1)
         # print(self.W)

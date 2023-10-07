@@ -13,6 +13,7 @@ import pandas as pd
 from qpsolvers import solve_qp
 from scipy import sparse
 
+from loss.hier import MCLoss, get_constr_out
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -47,29 +48,31 @@ def train_model_lbfgs(model, input, target, criterion):
 
 
 class CalibratedClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, classifier, method='TS', type='flat', encoder=None):
+    def __init__(self, classifier=None, method='TS', type='hier', encoder=None):
         self.classifier = classifier
         self.method = method
         self.temperature = None
         self.model = None
         self.type = type
-        self.encoder =encoder
+        self.encoder = encoder
 
     def fit(self, X, y): 
-        if self.encoder is not None:
-            y = self.encoder.transform(y)
+        # if self.encoder is not None:
+            # y = self.encoder.transform(y)
 
-        _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
+        _, logits = self.classifier.predict_proba(X)
         if self.type == 'flat':
             criterion = nn.CrossEntropyLoss()
             model = TemperatureScaling().to(device)
         elif self.type == 'hier':
-            criterion = F.binary_cross_entropy_with_logits
+            # base_criterion = F.binary_cross_entropy_with_logits
+            criterion =  MCLoss(self.encoder)
+
             model = VectorScaling(logits.shape[1]).to(device)
         else:
             raise ValueError('Invalid type.')
 
-        optimizer = optim.Adam(model.parameters(), lr=0.05)
+        optimizer = optim.Adam(model.parameters(), lr=0.5)
         
         with torch.no_grad():
             if torch.is_tensor(logits):
@@ -83,8 +86,8 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
                 target = torch.from_numpy(y).to(device)
 
         # print(input.device, target.device)
-        # self.model = train_model(model, input, target, criterion, optimizer, 30)
-        self.model = train_model_lbfgs(model, input, target, criterion)
+        self.model = train_model(model, input, target, criterion, optimizer, 30)
+        # self.model = train_model_lbfgs(model, input, target, criterion)
         # print(self.model.temperature)
         return self
 
@@ -96,7 +99,7 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         return preds.astype(int)
 
     def predict_proba(self, X):
-        _, logits = self.classifier.predict_proba(self.classifier.model_fitted, X)
+        _, logits = self.classifier.predict_proba(X)
 
         if torch.is_tensor(logits):
             input = logits
@@ -108,47 +111,9 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
             output = F.softmax(output, dim=-1)
         elif self.type == 'hier':
             # print('Enter')
-            output = F.sigmoid(output)
+            output = get_constr_out(output, self.encoder.get_R())
             output = output.cpu().detach().numpy().astype(float)
-            # output =  self.run_IR(output)
         return output
 
-    #TODO: refactor
-    def run_IR(self, probas):
-        """ ref to https://qpsolvers.github.io/qpsolvers/quadratic-programming.html"""
-        nodes = self.encoder.G_idx.nodes()
-        num_nodes = len(nodes)
-        P = np.zeros((num_nodes, num_nodes))
-        np.fill_diagonal(P, 1)
+    
 
-        C = self._get_C(nodes)
-        G = sparse.csc_matrix(-1 * C)
-        P = sparse.csc_matrix(P)
-
-        h = np.zeros(C.shape[0])
-        lb = np.zeros(C.shape[1])
-        ub = np.ones(C.shape[1])
-        probas_post = []
-        for row in probas:
-            q = -1 * row.T
-            x = solve_qp(0.5 * P, q, G=G, h=h,lb=lb, ub=ub, solver="osqp")
-            probas_post.append(x)
-        # print(x - row)
-        return np.array(probas_post)
-
-
-    def _get_C(self, nodes):
-        """
-        Constraint matrix for quadratic prog, ensure that, pi < pj, if j is a parent of i.
-        """
-        num_nodes = len(nodes)
-        C = []
-        for i in range(num_nodes):
-            successors = list(self.encoder.G_idx.successors(i))
-            for child in successors:
-                row = np.zeros(num_nodes)
-                row[i] = 1.0
-                row[child] = -1.0
-                C.append(row)
-        # print(np.array(C).shape, num_nodes)
-        return np.array(C)

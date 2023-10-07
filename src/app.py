@@ -39,6 +39,8 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # TODO: pass list to model type
 
 def main():
+    random.seed(5)
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-e',

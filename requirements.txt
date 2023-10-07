@@ -12,3 +12,6 @@ skorch
 torch
 wget
 gdown
+
+hiclass
+qpsolvers
