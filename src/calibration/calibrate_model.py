@@ -13,7 +13,7 @@ import pandas as pd
 from qpsolvers import solve_qp
 from scipy import sparse
 
-from loss.hier import MCLoss, get_constr_out
+from loss.hier import MCLoss, get_constr_out, MaskBCE
 
 if torch.cuda.is_available():
     device = torch.device('cuda')
@@ -48,7 +48,7 @@ def train_model_lbfgs(model, input, target, criterion):
 
 
 class CalibratedClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, classifier=None, method='TS', type='hier', encoder=None):
+    def __init__(self, classifier, criterion=None, optimizer=None, method='TS', type='hier', encoder=None):
         self.classifier = classifier
         self.method = method
         self.temperature = None
@@ -67,6 +67,9 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         elif self.type == 'hier':
             # base_criterion = F.binary_cross_entropy_with_logits
             criterion =  MCLoss(self.encoder)
+            criterion =  MaskBCE(self.encoder)
+            # y = self.encoder.transform(y)
+            # criterion =  nn.BCELoss()
 
             model = VectorScaling(logits.shape[1]).to(device)
         else:
@@ -107,12 +110,13 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
             input = torch.from_numpy(logits).to(torch.float).to(device)
             
         output = self.model(input)
+
         if self.type == 'flat':
             output = F.softmax(output, dim=-1)
-        elif self.type == 'hier':
-            # print('Enter')
-            output = get_constr_out(output, self.encoder.get_R())
-            output = output.cpu().detach().numpy().astype(float)
+        # elif self.type == 'hier':
+        #     # print('Enter')
+        #     output = get_constr_out(output, self.encoder.get_R())
+        #     output = output.cpu().detach().numpy().astype(float)
         return output
 
     

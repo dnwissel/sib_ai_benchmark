@@ -7,6 +7,8 @@ from scipy.special import softmax
 from utilities import dataLoader  as dl
 import numpy as np
 import torch
+import torch.nn.functional as F
+
 
 from metrics.calibration_error import calibration_error
 from inference import infer
@@ -248,7 +250,9 @@ class WrapperCHMC(WrapperHier):
             probas_calib = None
 
             if self.calibrater is not None:
-                probas_calib = self.calibrater.predict_proba(X)
+                logits = self.calibrater.predict_proba(X)
+                probas_calib = get_constr_out(logits, self.encoder.get_R())
+                probas_calib = probas_calib.cpu().detach().numpy().astype(float)
                 # print(probas_calib)
             return probas_calib, probas_uncalib
 
@@ -323,7 +327,10 @@ class WrapperCS(WrapperHier):
             probas_calib = None
 
             if self.calibrater is not None:
-                probas_calib = self.calibrater.predict_proba(X)
+                logits = self.calibrater.predict_proba(X)
+                probas_calib = F.sigmoid(logits)
+                probas_calib = probas_calib.cpu().detach().numpy().astype(float)
+
                 probas_calib = infer.infer_path(probas_calib, self.encoder)
                 probas_calib = infer.run_IR(probas_calib, self.encoder)
                 # print(probas_calib)
