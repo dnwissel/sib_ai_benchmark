@@ -22,6 +22,11 @@ from scipy import sparse
 from qpsolvers import solve_qp
 import matplotlib.pyplot as plt
 
+from loss.hier import MaskBCE
+from calibration.calibrate_model import CalibratedClassifier
+
+
+
 
 class NeuralNetClassifierHier_2(NeuralNetClassifier):
 
@@ -29,6 +34,15 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         self.predict_path = val
     
     def predict(self, X, threshold=0.5):
+        probas, _ = self.predict_proba(X)
+        
+        if hasattr(self, 'predict_path') and self.predict_path:
+            return probas > threshold
+
+        preds = self._inference(probas)
+        return preds
+
+    def predict_proba(self, X):
         output = self.forward(X)
         probas = torch.sigmoid(output) 
         probas = probas.to('cpu').numpy()
@@ -36,10 +50,10 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         if hasattr(self, 'predict_path') and self.predict_path:
             probas = self._inference_path(probas)
             probas_consitant = self.run_IR(probas)
-            return probas_consitant > threshold
+            return probas_consitant, output
 
         preds = self._inference(probas)
-        return preds
+        return preds, None  #TODO : logits
     
     def run_IR(self, probas):
             """ 
@@ -68,7 +82,7 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
                 probas_post.append(x)
 
                 # plot
-                if cnt % 1000 == 0:
+                if False and cnt % 1000 == 0:
                     # print(x - row)
                     optimal = x
                     diff = x - row
@@ -169,43 +183,6 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
                 lhs[label] = lh_
             probas_margin[row_idx] = lhs
         return probas_margin
-
-
-class MaskBCE(nn.Module):
-    def __init__(self, en, idx_to_eval):
-        super().__init__()
-        self.en = en
-        # self.R = R
-        self.idx_to_eval = idx_to_eval
-        # self.criterion = F.binary_cross_entropy()
-        # self.bid = 0
-
-
-    def forward(self, output, target):
-        # constr_output = get_constr_out(output, self.R)
-        # train_output = target*output.double()
-        # train_output = get_constr_out(train_output, self.R)
-        # train_output = (1-target)*constr_output.double() + target*train_output
-        train_output = output
-
-        #Mask Loss
-        loss_mask = self.en.get_lossMask()
-        loss_mask = loss_mask.to(device)
-        lm_batch = loss_mask[target]
-        target = self.en.transform(target.cpu().numpy())
-        target = target.astype(np.float32)
-        target = torch.from_numpy(target).to(device)
-
-        # #Mask target
-        # lm_batch = loss_mask[target]
-        # target = self.en.transform(target.numpy())
-        # target = target.astype(np.float32)
-        # target = np.where(lm_batch, target, 1)
-        # target = torch.from_numpy(target).to(device)
-
-        loss = F.binary_cross_entropy_with_logits(train_output[:,self.idx_to_eval], target[:,self.idx_to_eval], reduction='none')
-        loss = lm_batch[:,self.idx_to_eval] * loss
-        return loss.sum()
     
 
 class ConditionalSigmoid(nn.Module):
@@ -295,7 +272,9 @@ params = dict(
         preprocessing_steps=[('StandardScaler', StandardScaler(with_mean=False))],
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space=tuning_space,
-        # data_shape_required=True    
+        # data_shape_required=True 
+        calibrater=CalibratedClassifier
+
 )
 
 

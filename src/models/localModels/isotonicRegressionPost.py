@@ -103,7 +103,7 @@ class IsotonicRegressionPost:
             return np.array(probas).T
 
         probas =  self.run_IR(np.array(probas).T)
-        return probas
+        return probas, None
 
 
     def predict(self, X, threshold=0.5):

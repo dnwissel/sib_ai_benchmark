@@ -1,6 +1,6 @@
 import numpy as np
 from torch import nn, optim
-from torch.nn import functional
+from torch.nn import functional as F
 import torch
 
 device = (
@@ -10,6 +10,41 @@ device = (
     if torch.backends.mps.is_available()
     else "cpu"
 )
+
+class MaskBCE(nn.Module):
+    def __init__(self, encoder):
+        super().__init__()
+        self.encoder = encoder
+        # self.R = R
+        self.criterion = F.binary_cross_entropy_with_logits
+        # self.bid = 0
+
+
+    def forward(self, output, target):
+        # constr_output = get_constr_out(output, self.R)
+        # train_output = target*output.double()
+        # train_output = get_constr_out(train_output, self.R)
+        # train_output = (1-target)*constr_output.double() + target*train_output
+        train_output = output
+
+        #Mask Loss
+        loss_mask = self.encoder.get_lossMask()
+        loss_mask = loss_mask.to(device)
+        lm_batch = loss_mask[target]
+        target = self.encoder.transform(target.cpu().numpy())
+        target = target.astype(np.float32)
+        target = torch.from_numpy(target).to(device)
+
+        # #Mask target
+        # lm_batch = loss_mask[target]
+        # target = self.encoder.transform(target.numpy())
+        # target = target.astype(np.float32)
+        # target = np.where(lm_batch, target, 1)
+        # target = torch.from_numpy(target).to(device)
+
+        loss = self.criterion(train_output[:,self.encoder.idx_to_eval], target[:,self.encoder.idx_to_eval], reduction='none')
+        loss = lm_batch[:,self.encoder.idx_to_eval] * loss
+        return loss.sum()
 
 class MCLoss(nn.Module):
     """

@@ -219,14 +219,19 @@ class Benchmark:
 
                 y_test_pred_calib, y_test_pred_uncalib = classifier.predict(X_test)
                 y_test_proba_calib, y_test_proba_uncalib = classifier.predict_proba(X_test)
-                
+                ece = None
+
                 if self.path_eval:
                     y_test_encoded = classifier.encoder.transform(y_test)
-                    ece = classifier.calculate_ece_path(y_test_encoded, y_test_pred_calib, y_test_proba_calib)
-                    ece_uc = classifier.calculate_ece_path(y_test_encoded, y_test_pred_uncalib, y_test_proba_uncalib) # TODO None
+                    ece_uc = classifier.ece_path(y_test_encoded, y_test_pred_uncalib, y_test_proba_uncalib) # TODO None
+
+                    if y_test_pred_calib is not None:
+                        ece = classifier.ece_path(y_test_encoded, y_test_pred_calib, y_test_proba_calib)
                 else:
-                    ece = classifier.calculate_ece(y_test, y_test_pred_calib, y_test_proba_calib)
-                    ece_uc = classifier.calculate_ece(y_test, y_test_pred_uncalib, y_test_proba_uncalib)
+                    ece_uc = classifier.ece(y_test, y_test_pred_uncalib, y_test_proba_uncalib)
+
+                    if y_test_pred_calib is not None:
+                        ece = classifier.ece(y_test, y_test_pred_calib, y_test_proba_calib)
 
                 print(ece)
                 print(ece_uc)
@@ -295,8 +300,8 @@ class Benchmark:
                 if 'ece_uc' in locals():
                     model_result.setdefault('ece_uc', []).append(ece_uc) 
                 
-                y_test_predict = y_test_pred_uncalib 
-                y_test_predict = y_test_pred_calib 
+                y_test_predict = y_test_pred_uncalib if y_test_pred_calib is None else y_test_pred_calib
+                # y_test_predict = y_test_pred_calib 
                 # print(y_test_predict)
 
                 # Calculate metrics

@@ -119,11 +119,18 @@ class CascadedLRPost:
 
     def predict_log_proba(self, X):
         probas = []
+        # To avoid log(0)
+        epsilon = 1e-10
         for cls in self.trained_classifiers:
             if isinstance(cls, float):
+                if cls == 0.0:
+                    cls += epsilon
                 col = np.repeat(np.log([cls]), X.shape[0]) # TODO log
             else:
-                col = cls.predict_log_proba(X)[:, 1] # proba for pos class
+                col = cls.predict_proba(X)[:, 1] # proba for pos class
+                mask = (col == 0.0)
+                col[mask] += epsilon
+                col = np.log(col)
             probas.append(col)
         probas =  np.array(probas).T
         return probas
@@ -137,7 +144,7 @@ class CascadedLRPost:
         return self._inference_2(self.marginal_probas_full)
 
     def predict_proba(self, X):
-        return self.marginal_probas_full
+        return self.marginal_probas_full, None
 
     #TODO: refactor to a func
     def _inference(self, probas, threshold=0.5):
