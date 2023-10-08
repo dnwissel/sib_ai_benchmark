@@ -177,7 +177,7 @@ params = dict(
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space=tuning_space,
         # data_shape_required=True 
-        calibrater=CalibratedClassifier
+        calibrater=CalibratedClassifier(criterion=MCLoss(), method='VS')
 )
 
 

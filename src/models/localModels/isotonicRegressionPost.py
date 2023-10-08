@@ -107,7 +107,7 @@ class IsotonicRegressionPost:
 
 
     def predict(self, X, threshold=0.5):
-        probas = self.predict_proba(X)
+        probas, _ = self.predict_proba(X)
         if self.predict_path:
             # preds = []
             # for cls in self.trained_classifiers:

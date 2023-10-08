@@ -2,11 +2,10 @@ import numpy as np
 import pandas as pd
 
 from sklearn.linear_model import LogisticRegression
-# from sklearn.isotonic import isotonic_regression
-from quadprog import solve_qp
 import networkx as nx
 from models.wrapper import WrapperLocal
 from sklearn.base import clone
+from inference.infer import infer_1, infer_2
 
 
 class CascadedLRPost:
@@ -41,40 +40,14 @@ class CascadedLRPost:
                 cls = cls.fit(X, node_y)
             self.trained_classifiers[idx] = cls
 
-    # def fit_LR(self, probas):
-    #     R = self.encoder.get_R()
-    #     self.LR_cls = [] # train for each node
-    #     n_sample = probas.shape(0)
-    #     n_node = probas.shape(1)
 
-    #     LR = LogisticRegression(max_iter=1000)
-    #     for node in range(n_node):
-    #         node_y = self.node_indicators[:, node]
-    #         unique_node_y = np.unique(node_y)
-    #         if node in self.encoder.root_idx:
-    #             cls = 1
-    #         elif len(unique_node_y) == 1:
-    #             cls = int(unique_node_y[0])
-    #         else:
-    #             mask = R[node, :]
-    #             anc_probas = probas[:, mask]
-    #             cls = LR.fit(anc_probas, node_y)
-    #         self.LR_cls[node] = cls
-
-
-    # def predict_LR(self):
-    #     pass
-    
-
-    def _compute_marginals(self, anc_matrix, log_marginal_probas, log_proba, idx):
+    def _compute_marginals(self, anc_matrix, log_marginal_probas, log_probas, idx):
+        log_proba_current = log_probas[idx]
         log_mp = log_marginal_probas[idx] 
         if log_mp is not None:
             return log_mp
         
         anc_mask = anc_matrix[idx]
-        # idx = np.arange(len(log_marginal_probas))
-        # anc_idxs = idx[anc_mask]
-        # print(anc_mask)
         sum = 0
         for idx_anc, val in enumerate(anc_mask):
             if val == 0:
@@ -83,8 +56,9 @@ class CascadedLRPost:
             if anc_proba is not None:
                 sum += anc_proba
             else:
-                sum += self._compute_marginals(anc_matrix, log_marginal_probas, log_proba, idx_anc)
-        log_marginal_probas[idx] = sum + log_proba
+                # log_proba_anc = log_probas[idx_anc]
+                sum += self._compute_marginals(anc_matrix, log_marginal_probas, log_probas, idx_anc)
+        log_marginal_probas[idx] = sum + log_proba_current
         # print(type(log_marginal_probas[idx]))
         return sum
 
@@ -103,8 +77,8 @@ class CascadedLRPost:
             roots_idx = self.encoder.roots_idx
             log_marginal_probas[roots_idx] = 0.0
             # log_marginal_probas = log_marginal_probas.tolist()
-            for idx, log_proba in enumerate(log_probas):
-                self._compute_marginals(anc_matrix, log_marginal_probas, log_proba, idx)
+            for idx in range(len(log_probas)):
+                self._compute_marginals(anc_matrix, log_marginal_probas, log_probas, idx)
                 # print(log_marginal_probas[idx])
             
             # print(log_marginal_probas)
@@ -141,51 +115,11 @@ class CascadedLRPost:
         self.marginal_probas_full = self.get_marginal_proba(log_probas)
         if self.predict_path:
             return self.marginal_probas_full > threshold
-        return self._inference_2(self.marginal_probas_full)
+        return infer_2(self.marginal_probas_full)
 
     def predict_proba(self, X):
         return self.marginal_probas_full, None
 
-    #TODO: refactor to a func
-    def _inference(self, probas, threshold=0.5):
-        predicted = probas > threshold
-        y_pred = np.zeros(predicted.shape[0])
-        for row_idx, row in enumerate(predicted):
-            counts = row[self.encoder.label_idx].sum()
-            if counts < 2:
-                idx = np.argmax(probas[row_idx, self.encoder.label_idx])
-                y_pred[row_idx] = self.encoder.label_idx[idx]
-            else:
-                labels = self.encoder.label_idx[row[self.encoder.label_idx].tolist()]
-                # if counts == 0:
-                #     labels = self.encoder.label_idx
-                mask = np.argsort(probas[row_idx, labels])
-                # print(mask)
-                labels_sorted = [labels[i] for i in mask]
-                preds = []
-                while len(labels_sorted) != 0:
-                    ancestors = nx.ancestors(self.encoder.G_idx, labels_sorted[0])
-                    path = [labels_sorted[0]]
-                    preds.append(labels_sorted[0])
-                    if ancestors is not None:
-                        path += list(ancestors)
-                    labels_sorted = [i for i in labels_sorted if i not in path]
-                idx = np.argmax(probas[row_idx, preds])
-                y_pred[row_idx] = preds[idx]
-        return y_pred.astype(int)
-    
-    def _inference_2(self, probas, threshold=0.5):
-        """Select index of the last 1 on the path as the preds"""
-        predicted = probas > threshold
-        y_pred = np.zeros(predicted.shape[0])
-
-        for row_idx, row in enumerate(predicted):
-            for idx in range(len(row) - 1 , -1, -1):
-                # idx = len(row) - 1 - ridx
-                if row[idx] and idx in self.encoder.label_idx:
-                    y_pred[row_idx] = idx
-                    break
-        return y_pred
         
 params = dict(
         name='CascadedLRPost',

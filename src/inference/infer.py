@@ -99,7 +99,7 @@ def _lhs_dp(node, en, row, memo):
     return memo[node]
     
 
-def infer(probas, encoder):
+def infer_cs(probas, encoder):
     y_pred = np.zeros(probas.shape[0])
     for row_idx, row in enumerate(probas):
         memo = np.zeros(len(encoder.G_idx.nodes())) - 1
@@ -116,7 +116,7 @@ def infer(probas, encoder):
     return y_pred
 
 
-def infer_path(probas, encoder):
+def infer_path_cs(probas, encoder):
     probas_margin = np.zeros(probas.shape)
     num_nodes = probas.shape[1]
     for row_idx, row in enumerate(probas):
@@ -138,4 +138,50 @@ def infer_path(probas, encoder):
             lhs[label] = lh_
         probas_margin[row_idx] = lhs
     return probas_margin
+
+
+def infer_1(probas, threshold=0.5):
+    """
+    Identify multiple paths. Compare the probability of the last predicted node of those paths
+    """
+    predicted = probas > threshold
+    y_pred = np.zeros(predicted.shape[0])
+    for row_idx, row in enumerate(predicted):
+        counts = row[self.encoder.label_idx].sum()
+        if counts < 2:
+            idx = np.argmax(probas[row_idx, self.encoder.label_idx])
+            y_pred[row_idx] = self.encoder.label_idx[idx]
+        else:
+            labels = self.encoder.label_idx[row[self.encoder.label_idx].tolist()]
+            # if counts == 0:
+            #     labels = self.encoder.label_idx
+            mask = np.argsort(probas[row_idx, labels])
+            # print(mask)
+            labels_sorted = [labels[i] for i in mask]
+            preds = []
+            while len(labels_sorted) != 0:
+                ancestors = nx.ancestors(self.encoder.G_idx, labels_sorted[0])
+                path = [labels_sorted[0]]
+                preds.append(labels_sorted[0])
+                if ancestors is not None:
+                    path += list(ancestors)
+                labels_sorted = [i for i in labels_sorted if i not in path]
+            idx = np.argmax(probas[row_idx, preds])
+            y_pred[row_idx] = preds[idx]
+    return y_pred.astype(int)
+
+def infer_2(probas, threshold=0.5):
+    """
+    Select index of the last 1 on the path as the preds
+    """
+    predicted = probas > threshold
+    y_pred = np.zeros(predicted.shape[0])
+
+    for row_idx, row in enumerate(predicted):
+        for idx in range(len(row) - 1 , -1, -1):
+            # idx = len(row) - 1 - ridx
+            if row[idx] and idx in self.encoder.label_idx:
+                y_pred[row_idx] = idx
+                break
+    return y_pred
 

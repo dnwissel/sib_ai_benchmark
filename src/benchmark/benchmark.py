@@ -220,6 +220,7 @@ class Benchmark:
                 y_test_pred_calib, y_test_pred_uncalib = classifier.predict(X_test)
                 y_test_proba_calib, y_test_proba_uncalib = classifier.predict_proba(X_test)
                 ece = None
+                ece_uc = None
 
                 if self.path_eval:
                     y_test_encoded = classifier.encoder.transform(y_test)
@@ -289,6 +290,10 @@ class Benchmark:
                     # ece = calibration_error(y_test, y_test_pred_uncalib, y_test_proba_uncalib)
 
                 
+                if ece is None:
+                    y_test_pred_calib = y_test_pred_uncalib
+                    y_test_proba_calib = y_test_proba_uncalib
+                    ece =ece_uc
 
                 model_result.setdefault('predicts_calib', []).append(y_test_pred_calib) 
                 model_result.setdefault('predicts_uncalib', []).append(y_test_pred_uncalib) 
@@ -296,17 +301,16 @@ class Benchmark:
                 model_result.setdefault('proba_uncalib', []).append(y_test_proba_uncalib) 
                 # model_result.setdefault('logits', []).append(logits.tolist() if logits is not None else logits) 
                 model_result.setdefault('ece', []).append(ece) 
+                model_result.setdefault('ece_uc', []).append(ece_uc) 
 
-                if 'ece_uc' in locals():
-                    model_result.setdefault('ece_uc', []).append(ece_uc) 
                 
-                y_test_predict = y_test_pred_uncalib if y_test_pred_calib is None else y_test_pred_calib
-                # y_test_predict = y_test_pred_calib 
-                # print(y_test_predict)
+                y_test_pred = y_test_pred_calib
+                # y_test_pred = y_test_pred_calib 
+                # print(y_test_pred)
 
                 # Calculate metrics
                 for metric_name, metric in outer_metrics.items():
-                    score = metric(y_test, y_test_predict)
+                    score = metric(y_test, y_test_pred)
                     scores = model_result.setdefault('scores', {})
                     scores.setdefault(f'{metric_name}', {}).setdefault('full', []).append(score)
 

@@ -273,7 +273,8 @@ params = dict(
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space=tuning_space,
         # data_shape_required=True 
-        calibrater=CalibratedClassifier
+        calibrater=CalibratedClassifier(criterion=MaskBCE(), method='VS')
+        # calibrater=CalibratedClassifier(criterion=F.binary_cross_entropy_with_logits, method='VS')
 
 )
 

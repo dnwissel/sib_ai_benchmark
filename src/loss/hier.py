@@ -12,13 +12,12 @@ device = (
 )
 
 class MaskBCE(nn.Module):
-    def __init__(self, encoder):
+    def __init__(self, encoder=None):
         super().__init__()
         self.encoder = encoder
         # self.R = R
         self.criterion = F.binary_cross_entropy_with_logits
         # self.bid = 0
-
 
     def forward(self, output, target):
         # constr_output = get_constr_out(output, self.R)
@@ -46,11 +45,14 @@ class MaskBCE(nn.Module):
         loss = lm_batch[:,self.encoder.idx_to_eval] * loss
         return loss.sum()
 
+    def set_encoder(self, encoder):
+        self.encoder = encoder
+
 class MCLoss(nn.Module):
     """
     input should be logits.
     """
-    def __init__(self, encoder):
+    def __init__(self, encoder=None):
         super().__init__()
         self.criterion = nn.BCELoss()
         self.encoder = encoder
@@ -73,6 +75,9 @@ class MCLoss(nn.Module):
         # train_output[mask] = 0
         loss = self.criterion(train_output[:,self.encoder.idx_to_eval ], target[:,self.encoder.idx_to_eval])
         return loss
+
+    def set_encoder(self, encoder):
+        self.encoder = encoder
 
 def get_constr_out(x, R):
     """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
