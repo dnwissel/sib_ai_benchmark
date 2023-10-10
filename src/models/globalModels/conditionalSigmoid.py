@@ -269,7 +269,8 @@ params = dict(
         name='ConditionalSigmoid',
         model=model,
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
-        preprocessing_steps=[('StandardScaler', StandardScaler(with_mean=False))],
+        # preprocessing_steps=[('StandardScaler', StandardScaler(with_mean=False))],
+        preprocessing_steps=[('StandardScaler', StandardScaler())],
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space=tuning_space,
         # data_shape_required=True 
