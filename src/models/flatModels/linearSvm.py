@@ -6,6 +6,9 @@ from scipy.stats import loguniform
 import numpy as np
 
 from models.wrapper import WrapperSVM
+from calibration.calibrate_model import CalibratedClassifier
+from torch import nn
+
 
 
 # params = dict(
@@ -26,7 +29,9 @@ params = dict(
         tuning_space={
                 'C': loguniform(1e-1, 1e1),  # C: Penalty parameter in Soft margin SVM
                 'class_weight':['balanced', None]
-        }       
+        },
+        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS')
+    
 )
 
 

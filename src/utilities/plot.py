@@ -158,7 +158,7 @@ def load_res(path):
 
 if __name__ == "__main__":
     parent_path = Path(__file__).parents[2]
-    path_res = os.path.join(parent_path, "results/")
+    path_res = os.path.join(parent_path, "results/flat/")
     # with open(path_res + '/scanvi_bcm_flat_wo_NeuralNet_done', 'rb') as fh:
     #     results = pickle.load(fh)
     # metric_name = 'balanced_accuracy_score'
@@ -168,21 +168,20 @@ if __name__ == "__main__":
     print(fns)
 
     # ece
-    for fn in fns:
-        if 'path-eval' in fn  or 'global' in fn:
-            continue
+    # for fn in fns:
+    #     if 'path-eval' in fn  or 'global' in fn:
+    #         continue
 
-        with open(path_res + f'/{fn}', 'rb') as fh:
-            results = pickle.load(fh)
-        metric_name = 'ece'
-        plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])
+    #     with open(path_res + f'/{fn}', 'rb') as fh:
+    #         results = pickle.load(fh)
+    #     metric_name = 'ece'
+    #     plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])
 
-    # balanced_accuracy_score
     for fn in fns:
         if 'path-eval' in fn:
             continue
 
         with open(path_res + f'/{fn}', 'rb') as fh:
             results = pickle.load(fh)
-        metric_name = 'balanced_accuracy_score'
+        metric_name = 'accuracy'
         plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])

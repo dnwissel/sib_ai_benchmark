@@ -34,7 +34,7 @@ def train_model(model, input, target, criterion, optimizer, epochs):
     
 
 def train_model_lbfgs(model, input, target, criterion):
-    optimizer = optim.LBFGS(model.parameters(), lr=0.1, max_iter=1000)
+    optimizer = optim.LBFGS(model.parameters(), lr=0.01, max_iter=1000)
 
     def closure():
         optimizer.zero_grad()
@@ -54,37 +54,29 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
             criterion=None, 
             # optimizer=optim.Adam(model.parameters(), lr=0.5), 
             method='TS', 
-            encoder=None
+            encoder=None,
+            lr=0.01
         ):
-        self.model = model
+        self.classifier = model
         self.method_name = method
         self.criterion=criterion
         self.temperature = None
         self.encoder = encoder
+        self.lr = lr
 
     def set_model(self, model):
-        self.model = model
+        self.classifier = model
 
     def fit(self, X, y): 
-        # if self.encoder is not None:
-            # y = self.encoder.transform(y)
-
-        _, logits = self.model.predict_proba(X)
+        logits = self.classifier.get_logits(X)
         if self.method_name == 'TS':
-            # criterion = nn.CrossEntropyLoss()
             method = TemperatureScaling().to(device)
         elif self.method_name == 'VS':
-            # base_criterion = F.binary_cross_entropy_with_logits
-            # criterion =  MCLoss(self.encoder)
-            # criterion =  MaskBCE(self.encoder)
-            # y = self.encoder.transform(y)
-            # criterion =  nn.BCELoss()
-
             method = VectorScaling(logits.shape[1]).to(device)
         else:
             raise ValueError('Invalid method name.')
 
-        self.optimizer = optim.Adam(method.parameters(), lr=0.5)
+        self.optimizer = optim.Adam(method.parameters(), lr=self.lr)
 
         
         with torch.no_grad():
@@ -100,20 +92,19 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
                 target = torch.from_numpy(y).to(device)
 
         # print(input.device, target.device)
-        self.method = train_model(method, input, target, self.criterion, self.optimizer, 30)
-        # self.method = train_model_lbfgs(method, input, target, criterion)
-        # print(self.model.temperature)
+        self.method = train_model(method, input, target, self.criterion, self.optimizer, 50)
+        self.method = train_model_lbfgs(method, input, target, self.criterion)
         return self
 
-    #TODO: argmax for PS/VS
-    def predict(self, X):
-        preds = self.model.predict(X)
-        if torch.is_tensor(preds):
-            return preds.numpy().astype(int)
-        return preds.astype(int)
+    # #TODO: argmax for PS/VS
+    # def predict(self, X):
+    #     preds = self.classifier.model_fitted.predict(X)
+    #     if torch.is_tensor(preds):
+    #         return preds.numpy().astype(int)
+    #     return preds.astype(int)
 
-    def predict_proba(self, X):
-        _, logits = self.model.predict_proba(X)
+    def get_logits(self, X):
+        logits = self.classifier.get_logits(X)
 
         if torch.is_tensor(logits):
             input = logits

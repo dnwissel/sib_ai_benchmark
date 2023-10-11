@@ -18,6 +18,7 @@ from skorch.callbacks import EarlyStopping
 from skorch.dataset import ValidSplit
 from scipy.stats import loguniform, uniform, randint
 from utilities.customizedValidSplit import CustomizedValidSplit
+from calibration.calibrate_model import CalibratedClassifier
 
 
 class NeuralNet(nn.Module):
@@ -95,7 +96,7 @@ params = dict(
         preprocessing_steps=[('StandardScaler', StandardScaler(with_mean=False))],
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space=tuning_space,
-        # data_shape_required=True    
+        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS', lr=0.01)
 )
 
 

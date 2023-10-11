@@ -7,6 +7,8 @@ from scipy.special import softmax
 
 import numpy as np
 from models.wrapper import WrapperSVM
+from calibration.calibrate_model import CalibratedClassifier
+from torch import nn
 
 
 params = dict(
@@ -18,7 +20,9 @@ params = dict(
                 # 'gamma': loguniform(1e-4, 1e-3),
                 'gamma': ['scale', 'auto'],
                 'class_weight':['balanced', None]
-        }
+        },
+        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS')
+
 )
 
 # Please don't change this line

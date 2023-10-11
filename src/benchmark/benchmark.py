@@ -184,41 +184,14 @@ class Benchmark:
                             f'Best hyperparameters ({len(best_params_unique)}/{n_splits}): {", ".join(best_params_unique)}'),
                             msg_type='content'
                         )
-                # classifier.model.set_predictPath(False)
-                # if not self.path_eval:
-                #     try:
-                #         model_selected.best_estimator_.steps[-1][1].set_predictPath(False)
-                #     except:
-                #         pass
-
-                # y_test_pred_uncalib = model_selected.predict(X_test)
-                # print(y_test_pred_uncalib)
                 classifier.set_modelFitted(model_selected)
-                # Uncaliberated confidence
-                # y_test_proba_uncalib_all, logits = classifier.predict_proba(X_test)
-                # if y_test_proba_uncalib_all is not None:
-                #     y_test_proba_uncalib_all = y_test_proba_uncalib_all.astype(float) 
-
-                # Caliberation: skip Probabilistic model
-                # y_test_proba_calib = []
-                # y_test_proba_uncalib = []
-                # y_test_pred_calib = []
-                # ece = []
-
-                # #TODO: refactor to wrapper
-                # if isinstance(classifier, WrapperCHMC) or isinstance(classifier, WrapperLocal) or isinstance(classifier, WrapperCS):
-                #     model_type = 'hier'
-                # else: 
-                #     model_type ='flat'
-
-                # if logits is not None:
-                    # model_calibrated = CalibratedClassifierCV(model_selected, cv='prefit', method="sigmoid", n_jobs=-1)
-                    # model_calibrated = CalibratedClassifier(classifier, type=model_type, encoder=classifier.encoder)
-
                 classifier.fit_calibrater(X_val_cal, y_val_cal)
 
-                y_test_pred_calib, y_test_pred_uncalib = classifier.predict(X_test)
                 y_test_proba_calib, y_test_proba_uncalib = classifier.predict_proba(X_test)
+                y_test_pred_calib, y_test_pred_uncalib = classifier.predict(X_test)
+                # print(y_test_proba_calib, y_test_proba_uncalib)
+                # print(y_test_pred_calib, y_test_pred_uncalib)
+
                 ece = None
                 ece_uc = None
 
@@ -234,62 +207,9 @@ class Benchmark:
                     if y_test_pred_calib is not None:
                         ece = classifier.ece(y_test, y_test_pred_calib, y_test_proba_calib)
 
-                # print(ece)
-                # print(ece_uc)
-                    # for sample_idx, class_idx in enumerate(y_test_pred_calib):
-                    #     # print(y_test_proba_calib_all)
-                    #     # print(sample_idx, class_idx)
-                    #     y_test_proba_calib.append(y_test_proba_calib_all[sample_idx, class_idx])
-                    #     if y_test_proba_uncalib_all is not None:
-                    #         y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
-                    # # y_test_pred_calib = y_test_pred_calib.tolist()
-                    # y_test_proba_calib = np.array(y_test_proba_calib)
+                print(ece)
+                print(ece_uc)
 
-                    # if model_type == 'hier':
-                    #     y_test_proba_uncalib = y_test_proba_uncalib_all
-                    #     sum = 0
-                    #     sum_uc = 0
-                    #     y_test_encoded = classifier.encoder.transform(y_test)
-                    #     num_col = y_test_encoded.shape[1]
-                    #     num_row = y_test_encoded.shape[0]
-                    #     y_test_pred_calib = y_test_proba_calib > 0.5 
-                    #     # y_test_pred_calib = y_test_pred_calib.astype(int)
-
-                    #     for col_idx in range(num_col):
-                    #         if col_idx in classifier.encoder.roots_idx:
-                    #             continue
-
-                    #         #  set proba of entry 0 as 1 - P_pos
-                    #         idxs = np.arange(num_row)
-                    #         y_true_col = y_test_encoded[:, col_idx]
-                    #         proba_calib_col = y_test_proba_calib[:, col_idx]
-                    #         proba_uncalib_col = np.array(y_test_proba_uncalib)[:, col_idx]
-                    #         mask = (y_true_col == 0)
-                    #         idxs_0 =idxs[mask]
-
-                    #         proba_calib_col[idxs_0] = 1 - proba_calib_col[idxs_0]
-                    #         proba_uncalib_col[idxs_0] = 1 - proba_uncalib_col[idxs_0]
-
-                    #         ece_col = calibration_error(y_true_col, y_test_pred_calib[:, col_idx], proba_calib_col)
-                    #         ece_col_uc = calibration_error(y_true_col, np.array(y_test_pred_uncalib)[:, col_idx], proba_uncalib_col)
-                            
-                    #         sum += ece_col
-                    #         sum_uc += ece_col_uc
-
-                    #     num_col -= len(classifier.encoder.roots_idx)
-                    #     ece = sum / num_col
-                    #     ece_uc = sum_uc / num_col
-                    # else:
-                    #     ece = calibration_error(y_test, y_test_pred_calib, y_test_proba_calib)
-
-                # else: #TODO reafactor to func
-                #     for sample_idx, class_idx in enumerate(y_test_pred_uncalib):
-                #         if y_test_proba_uncalib_all is not None:
-                #             y_test_proba_uncalib.append(y_test_proba_uncalib_all[sample_idx, class_idx])
-                    
-                    # ece = calibration_error(y_test, y_test_pred_uncalib, y_test_proba_uncalib)
-
-                
                 if ece is None:
                     y_test_pred_calib = y_test_pred_uncalib
                     y_test_proba_calib = y_test_proba_uncalib
@@ -304,12 +224,13 @@ class Benchmark:
                 model_result.setdefault('ece_uc', []).append(ece_uc) 
 
                 
-                y_test_pred = y_test_pred_calib
+                y_test_pred = y_test_pred_uncalib
                 # y_test_pred = y_test_pred_calib 
                 # print(y_test_pred)
 
                 # Calculate metrics
                 for metric_name, metric in outer_metrics.items():
+                    # print(y_test, y_test_pred)
                     score = metric(y_test, y_test_pred)
                     scores = model_result.setdefault('scores', {})
                     scores.setdefault(f'{metric_name}', {}).setdefault('full', []).append(score)
