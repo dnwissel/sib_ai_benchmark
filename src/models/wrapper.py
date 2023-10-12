@@ -36,8 +36,11 @@ class Wrapper:
         self.g_global = None
         self.roots_label = None
         self.encoder = None
+        self.path_eval = None
 
-
+    def set_predictPath(self, val):
+        self.path_eval = val
+        
     def set_gGlobal(self, g, roots):
         self.g_global = g
         self.roots_label = roots
@@ -106,32 +109,35 @@ class Wrapper:
             probas_uncalib_all = self.nonlinear(logits)
         
         probas_calib = None
+        probas_uncalib = probas_uncalib_all
+
+        if not self.path_eval:
+            probas_uncalib = np.max(probas_uncalib_all, axis=-1)
 
         if self.calibrater is not None:
             logits = self.calibrater.get_logits(X)
-            self.probas_calib_all = self.nonlinear(logits)
+            probas_calib_all = self.nonlinear(logits)
+            probas_calib = probas_calib_all
+            # print(probas_calib, probas_uncalib)
 
-            if not hasattr(self.model_fitted, 'path_eval'):
-                probas_calib = np.max(self.probas_calib_all, axis=-1)
+            if not self.path_eval:
+                probas_calib = np.max(probas_calib_all, axis=-1)
 
-        if not hasattr(self.model_fitted, 'path_eval'):
-            probas_uncalib = np.max(probas_uncalib_all, axis=-1)
         return probas_calib, probas_uncalib
-    
 
     def predict(self, X, threshold=0.5):
         preds_uncalib = self.model_fitted.predict(X)
         preds_calib = None
 
         if self.calibrater is not None:
-            if self.probas_calib_all is None:
-                logits = self.calibrater.get_logits(X)
-                self.probas_calib_all = self.nonlinear(logits)
+            # if probas_calib_all is None:
+            logits = self.calibrater.get_logits(X)
+            probas_calib_all = self.nonlinear(logits)
                 
-            if hasattr(self.model_fitted, 'path_eval') and self.model_fitted.path_eval:
-                preds_calib = self.probas_calib_all > threshold
+            if self.path_eval:
+                preds_calib = probas_calib_all > threshold
             else:
-                preds_calib = self.predict_label(self.probas_calib_all)
+                preds_calib = self.predict_label(probas_calib_all)
         # print(preds_calib)
         return preds_calib, preds_uncalib
 
@@ -173,7 +179,7 @@ class WrapperHier(Wrapper):
         # y_test = np.array(list(map(partial(en.node_map.get, d=-1), test_y_label)))
         y_test = []
         for lable in test_y_label:
-                y_test.append(en.node_map.get(lable, -1))
+            y_test.append(en.node_map.get(lable, -1))
         y_test = np.array(y_test)
 
         # Set input dim for NN
@@ -217,23 +223,19 @@ class WrapperHier(Wrapper):
         ece = sum / num_col
         return ece
 
-    
-    def predict_proba(self, X):
-        #TODO: logits
-        probas_uncalib, _ = self.model_fitted.predict_proba(X)
-        probas_calib = None
-
-        if self.calibrater is not None:
-            logits = self.calibrater.get_logits(X)
-            probas_calib = self.nonlinear(logits)
-            # print(probas_calib)
-        return probas_calib, probas_uncalib
-
     def get_logits(self, X):
         _, logits = self.model_fitted.predict_proba(X)
         return logits
-
-            
+    
+    def nonlinear(self, logits):
+        """
+        If a classifier need to be calibrated, this method must be implemented
+        """
+        # return F.softmax(logits, dim=-1)
+        if torch.is_tensor(logits):
+            logits = logits.detach().numpy()
+        return F.sigmoid(logits)
+        
 
 class WrapperSVM(Wrapper):
     def get_logits(self, X):
@@ -263,25 +265,13 @@ class WrapperNN(Wrapper):
         y_train, y_test = y_train, le.transform(test_y_label.to_numpy().reshape(-1, 1)).flatten()
 
         return pipeline, param_grid, y_train, y_test
-
-    # def predict_proba(self, X):
-    #     proba = self.model_fitted.predict_proba(X)
-    #     pl_pp = Pipeline(self.model_fitted.best_estimator_.steps[:-1])
-    #     net = self.model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
-    #     # return proba, F.softmax(net.forward(pl_pp.transform(X)), dim=-1)
-    #     logits = net.forward(pl_pp.transform(X)).to('cpu').data
-    #     return proba, logits
     
     def get_logits(self, X):
         pl_pp = Pipeline(self.model_fitted.best_estimator_.steps[:-1])
         net = self.model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
         logits = net.forward(pl_pp.transform(X)).to('cpu').data
         return logits
-    
-    
-
-
-
+  
 
 class WrapperCHMC(WrapperHier):
     def nonlinear(self, logits):
@@ -319,3 +309,5 @@ class WrapperLocal(WrapperHier):
         
         self.model.set_encoder(en)
         return pipeline, param_grid, y_train, y_test
+
+     

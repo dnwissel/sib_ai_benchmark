@@ -46,8 +46,8 @@ class Benchmark:
         self._validate_input(tuning_mode)
         self.tuning_mode = tuning_mode
         self.classifiers = classifiers
-        self.results = None
         self.datasets = datasets
+        self.results = None
         self.task_name = None
         self.path_eval = False
 
@@ -124,14 +124,16 @@ class Benchmark:
                     inner_metrics = make_scorer(f1_hier_)
 
                     try:
-                        # print( pipeline.steps[-1][1].predict_path)
-                        # pipeline.steps[-1][1].predict_path = True
+                        # print( pipeline.steps[-1][1].path_eval)
+                        # pipeline.steps[-1][1].path_eval = True
                         # pipeline.steps[-1][1].set_predictPath(True)
                         classifier.model.set_predictPath(True)
+                        classifier.set_predictPath(True)
                     except:
                         print("An exception occurred, set_predictPath failed")
 
                     outer_metrics = {'f1_hier': f1_hier_, 'recall_hier': recall_hier_, 'precision_hier': precision_hier_}
+
                 # Fine-tuned model 
                 if not param_grid:
                     model_selected = pipeline

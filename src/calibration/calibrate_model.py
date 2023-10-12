@@ -22,7 +22,6 @@ else:
 
 # TODO : Dataloader
 def train_model(model, input, target, criterion, optimizer, epochs):
-
     for epoch in range(epochs):
         optimizer.zero_grad()
         output = model(input)
@@ -92,7 +91,7 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
                 target = torch.from_numpy(y).to(device)
 
         # print(input.device, target.device)
-        self.method = train_model(method, input, target, self.criterion, self.optimizer, 50)
+        # self.method = train_model(method, input, target, self.criterion, self.optimizer, 50)
         self.method = train_model_lbfgs(method, input, target, self.criterion)
         return self
 
@@ -112,13 +111,6 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
             input = torch.from_numpy(logits).to(torch.float).to(device)
             
         output = self.method(input)
-
-        # if self.type == 'flat':
-        #     output = F.softmax(output, dim=-1)
-        # elif self.type == 'hier':
-        #     # print('Enter')
-        #     output = get_constr_out(output, self.encoder.get_R())
-        #     output = output.cpu().detach().numpy().astype(float)
         return output
 
     

@@ -23,10 +23,10 @@ class IsotonicRegressionPost:
         self.encoder = encoder
         self.trained_classifiers = None
         self.base_learner = base_learner
-        self.predict_path = False
+        self.path_eval = False
     
     def set_predictPath(self, val):
-        self.predict_path = val
+        self.path_eval = val
         
     def fit(self, X, y):
         self._fit_base_learner(X, y)
@@ -108,7 +108,7 @@ class IsotonicRegressionPost:
 
     def predict(self, X, threshold=0.5):
         probas, _ = self.predict_proba(X)
-        if self.predict_path:
+        if self.path_eval:
             # preds = []
             # for cls in self.trained_classifiers:
             #     if isinstance(cls, int):

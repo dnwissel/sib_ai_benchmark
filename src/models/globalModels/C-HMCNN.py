@@ -24,14 +24,14 @@ from loss.hier import MCLoss, get_constr_out
 class NeuralNetClassifierHier_1(NeuralNetClassifier):
     
     def set_predictPath(self, val):
-        self.predict_path = val
+        self.path_eval = val
         
     def predict(self, X, threshold=0.5):
         output = self.forward(X)
         constrained_out = get_constr_out(output, self.module.en.get_R())
         constrained_out = constrained_out.to('cpu')
 
-        if hasattr(self, 'predict_path') and self.predict_path:
+        if hasattr(self, 'path_eval') and self.path_eval:
             return constrained_out > threshold
             
         preds = self._inference_2(constrained_out)
@@ -44,7 +44,8 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
         probas = F.sigmoid(constrained_out).numpy()
 
         probas[:, self.module.en.roots_idx] = 1.0
-        logits = constrained_out.numpy()
+        # logits = constrained_out.numpy()
+        logits = constrained_out
         return probas, logits
 
     def _inference(self, constrained_output):

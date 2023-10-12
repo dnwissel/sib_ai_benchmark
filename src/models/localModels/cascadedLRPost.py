@@ -18,10 +18,10 @@ class CascadedLRPost:
         self.trained_classifiers = None
         self.base_learner = base_learner
         self.node_indicators = None
-        self.predict_path = False
+        self.path_eval = False
 
     def set_predictPath(self, val):
-        self.predict_path = val
+        self.path_eval = val
        
     def fit(self, X, y):
         self._fit_base_learner(X, y)
@@ -109,16 +109,17 @@ class CascadedLRPost:
         probas =  np.array(probas).T
         return probas
 
-
     def predict(self, X, threshold=0.5):
         log_probas = self.predict_log_proba(X)
-        self.marginal_probas_full = self.get_marginal_proba(log_probas)
-        if self.predict_path:
-            return self.marginal_probas_full > threshold
-        return infer_2(self.marginal_probas_full)
+        marginal_probas_full = self.get_marginal_proba(log_probas)
+        if self.path_eval:
+            return marginal_probas_full > threshold
+        return infer_2(marginal_probas_full)
 
     def predict_proba(self, X):
-        return self.marginal_probas_full, None
+        log_probas = self.predict_log_proba(X)
+        marginal_probas_full = self.get_marginal_proba(log_probas)
+        return marginal_probas_full, None
 
         
 params = dict(

@@ -31,12 +31,12 @@ from calibration.calibrate_model import CalibratedClassifier
 class NeuralNetClassifierHier_2(NeuralNetClassifier):
 
     def set_predictPath(self, val):
-        self.predict_path = val
+        self.path_eval = val
     
     def predict(self, X, threshold=0.5):
         probas, _ = self.predict_proba(X)
         
-        if hasattr(self, 'predict_path') and self.predict_path:
+        if hasattr(self, 'path_eval') and self.path_eval:
             return probas > threshold
 
         preds = self._inference(probas)
@@ -47,7 +47,7 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         probas = torch.sigmoid(output) 
         probas = probas.to('cpu').numpy()
         
-        if hasattr(self, 'predict_path') and self.predict_path:
+        if hasattr(self, 'path_eval') and self.path_eval:
             probas = self._inference_path(probas)
             probas_consitant = self.run_IR(probas)
             return probas_consitant, output

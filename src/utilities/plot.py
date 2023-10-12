@@ -108,8 +108,8 @@ def plot(results, metric_name, path, ncols=2):
         res_model =[]
         for mn in model_names:
             #TODO: refactor benchmark
-            if metric_name == 'ece':
-                res_model.append(res_tissue[mn]['ece'])
+            if metric_name in ['ece', 'ece_uc']:
+                res_model.append(res_tissue[mn][metric_name])
             else:
                 res_model.append(res_tissue[mn]['scores'][metric_name]['full'])
         data.append(res_model)
@@ -158,30 +158,33 @@ def load_res(path):
 
 if __name__ == "__main__":
     parent_path = Path(__file__).parents[2]
-    path_res = os.path.join(parent_path, "results/flat/")
+    path_res = os.path.join(parent_path, 'results/hier')
     # with open(path_res + '/scanvi_bcm_flat_wo_NeuralNet_done', 'rb') as fh:
     #     results = pickle.load(fh)
     # metric_name = 'balanced_accuracy_score'
     # plot(results, metric_name, 'test')
 
     fns = load_res(path_res)
+
+    # path_res = os.path.join(parent_path, "results/")
+    fns = ['scanvi_bcm_global_local_path-eval.pkl']
     print(fns)
 
     # ece
+    for fn in fns:
+        # if 'path-eval' in fn  or 'global' in fn:
+            # continue
+
+        with open(path_res + f'/{fn}', 'rb') as fh:
+            results = pickle.load(fh)
+        metric_name = 'ece_uc'
+        plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])
+
     # for fn in fns:
-    #     if 'path-eval' in fn  or 'global' in fn:
+    #     if 'path-eval' in fn:
     #         continue
 
     #     with open(path_res + f'/{fn}', 'rb') as fh:
     #         results = pickle.load(fh)
-    #     metric_name = 'ece'
+    #     metric_name = 'accuracy'
     #     plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])
-
-    for fn in fns:
-        if 'path-eval' in fn:
-            continue
-
-        with open(path_res + f'/{fn}', 'rb') as fh:
-            results = pickle.load(fh)
-        metric_name = 'accuracy'
-        plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])
