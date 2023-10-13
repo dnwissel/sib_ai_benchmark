@@ -22,26 +22,34 @@ from calibration.calibrate_model import CalibratedClassifier
 
 
 class NeuralNet(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers,  dor_input, dor_hidden, neuron_power, **kwargs):
+    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers, batch_norm,  dor_input, dor_hidden, neuron_power, **kwargs):
         super().__init__()
 
         layers = []
         fixed_neuron_num = 2 ** neuron_power
         
         # Configure input layer
-        layers.extend([
+        layer = [
             nn.Linear(dim_in, fixed_neuron_num), 
             # nn.Dropout(dor_input), 
             nonlin()
-        ])
+        ]
+        if batch_norm:
+            layer.append(nn.BatchNorm1d(fixed_neuron_num))
+
+        layers.extend(layer)
 
         # Configure hidden layers
         for i in range(num_hidden_layers):
-            layers.extend([
+            layer = [
                 nn.Linear(fixed_neuron_num, fixed_neuron_num), 
-                nn.Dropout(dor_hidden), 
                 nonlin()
-            ])
+            ]
+            if batch_norm:
+                layer.append(nn.BatchNorm1d(fixed_neuron_num))
+
+            layer.append(nn.Dropout(dor_hidden))
+            layers.extend(layer)
 
         # Configure output layer
         layers.append(nn.Linear(fixed_neuron_num, dim_out))
@@ -71,6 +79,7 @@ tuning_space={
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
                 # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
                 'module__nonlin': [nn.ReLU],
+                'module__batch_norm': [True, False],
                 # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
                 'module__num_hidden_layers': [1],
                 # 'module__dor_input': uniform(0, 0.3),
@@ -93,10 +102,11 @@ params = dict(
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
-        preprocessing_steps=[('StandardScaler', StandardScaler(with_mean=False))],
+        # preprocessing_steps=[('StandardScaler', StandardScaler(with_mean=False))],
+        preprocessing_steps=[('StandardScaler', StandardScaler())],
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space=tuning_space,
-        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS', lr=0.01)
+        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS', lr=0.001)
 )
 
 

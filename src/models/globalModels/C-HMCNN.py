@@ -19,10 +19,10 @@ from scipy.stats import loguniform, uniform, randint
 
 from calibration.calibrate_model import CalibratedClassifier
 from loss.hier import MCLoss, get_constr_out
+from inference import infer
 
 
 class NeuralNetClassifierHier_1(NeuralNetClassifier):
-    
     def set_predictPath(self, val):
         self.path_eval = val
         
@@ -34,7 +34,7 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
         if hasattr(self, 'path_eval') and self.path_eval:
             return constrained_out > threshold
             
-        preds = self._inference_2(constrained_out)
+        preds = infer.infer_1(constrained_out, self.module.en)
         return preds
 
     def predict_proba(self, X):
@@ -47,47 +47,6 @@ class NeuralNetClassifierHier_1(NeuralNetClassifier):
         # logits = constrained_out.numpy()
         logits = constrained_out
         return probas, logits
-
-    def _inference(self, constrained_output):
-        predicted = constrained_output.data > 0.5
-        y_pred = np.zeros(predicted.shape[0])
-        for row_idx, row in enumerate(predicted):
-            counts = row[self.module.en.label_idx].sum()
-            if counts < 2:
-                idx = np.argmax(constrained_output.data[row_idx, self.module.en.label_idx])
-                y_pred[row_idx] = self.module.en.label_idx[idx]
-            else:
-                labels = self.module.en.label_idx[row[self.module.en.label_idx].numpy().tolist()]
-                # if counts == 0:
-                #     labels = self.module.en.label_idx
-                mask = np.argsort(constrained_output.data[row_idx, labels]).numpy()
-                # print(mask)
-                labels_sorted = [labels[i] for i in mask]
-                preds = []
-                while len(labels_sorted) != 0:
-                    ancestors = nx.ancestors(self.module.en.G_idx, labels_sorted[0])
-                    path = [labels_sorted[0]]
-                    preds.append(labels_sorted[0])
-                    if ancestors is not None:
-                        path += list(ancestors)
-                    labels_sorted = [i for i in labels_sorted if i not in path]
-                idx = np.argmax(constrained_output.data[row_idx, preds])
-                y_pred[row_idx] = preds[idx]
-        return y_pred
-    
-
-    def _inference_2(self, constrained_output):
-        """Select index of the last 1 on the path as the preds"""
-        predicted = constrained_output.data > 0.5
-        y_pred = np.zeros(predicted.shape[0])
-
-        for row_idx, row in enumerate(predicted):
-            for idx in range(len(row) - 1 , -1, -1):
-                # idx = len(row) - 1 - ridx
-                if row[idx] and idx in self.module.en.label_idx:
-                    y_pred[row_idx] = idx
-                    break
-        return y_pred
 
 
 class C_HMCNN(nn.Module):

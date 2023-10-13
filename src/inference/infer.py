@@ -5,7 +5,7 @@ import numpy as np
 
 from functools import partial
 import torch
-
+import networkx as nx
 
 
 def run_IR(probas, encoder):
@@ -101,6 +101,7 @@ def _lhs_dp(node, en, row, memo):
 
 def infer_cs(probas, encoder):
     y_pred = np.zeros(probas.shape[0])
+    y_probas = np.zeros(probas.shape[0])
     for row_idx, row in enumerate(probas):
         memo = np.zeros(len(encoder.G_idx.nodes())) - 1
         
@@ -113,7 +114,9 @@ def infer_cs(probas, encoder):
             lh_children = np.prod(1 -  row[list(encoder.successor_dict[label])])
             lhs[idx] = lh_ * lh_children
         y_pred[row_idx] = encoder.label_idx[np.argmax(lhs)]
-    return y_pred
+        lhs_norm = lhs / lhs.sum()
+        y_probas[row_idx] = np.max(lhs_norm)
+    return y_pred, y_probas
 
 
 def infer_path_cs(probas, encoder):
@@ -139,28 +142,27 @@ def infer_path_cs(probas, encoder):
         probas_margin[row_idx] = lhs
     return probas_margin
 
-
-def infer_1(probas, threshold=0.5):
+def infer_1(probas, encoder, threshold=0.5):
     """
     Identify multiple paths. Compare the probability of the last predicted node of those paths
     """
     predicted = probas > threshold
     y_pred = np.zeros(predicted.shape[0])
     for row_idx, row in enumerate(predicted):
-        counts = row[self.encoder.label_idx].sum()
+        counts = row[encoder.label_idx].sum()
         if counts < 2:
-            idx = np.argmax(probas[row_idx, self.encoder.label_idx])
-            y_pred[row_idx] = self.encoder.label_idx[idx]
+            idx = np.argmax(probas[row_idx, encoder.label_idx])
+            y_pred[row_idx] = encoder.label_idx[idx]
         else:
-            labels = self.encoder.label_idx[row[self.encoder.label_idx].tolist()]
+            labels = encoder.label_idx[row[encoder.label_idx].tolist()]
             # if counts == 0:
-            #     labels = self.encoder.label_idx
+            #     labels = encoder.label_idx
             mask = np.argsort(probas[row_idx, labels])
-            # print(mask)
+
             labels_sorted = [labels[i] for i in mask]
             preds = []
             while len(labels_sorted) != 0:
-                ancestors = nx.ancestors(self.encoder.G_idx, labels_sorted[0])
+                ancestors = nx.ancestors(encoder.G_idx, labels_sorted[0])
                 path = [labels_sorted[0]]
                 preds.append(labels_sorted[0])
                 if ancestors is not None:
@@ -170,7 +172,7 @@ def infer_1(probas, threshold=0.5):
             y_pred[row_idx] = preds[idx]
     return y_pred.astype(int)
 
-def infer_2(probas, threshold=0.5):
+def infer_2(probas, encoder, threshold=0.5):
     """
     Select index of the last 1 on the path as the preds
     """
@@ -180,7 +182,7 @@ def infer_2(probas, threshold=0.5):
     for row_idx, row in enumerate(predicted):
         for idx in range(len(row) - 1 , -1, -1):
             # idx = len(row) - 1 - ridx
-            if row[idx] and idx in self.encoder.label_idx:
+            if row[idx] and idx in encoder.label_idx:
                 y_pred[row_idx] = idx
                 break
     return y_pred

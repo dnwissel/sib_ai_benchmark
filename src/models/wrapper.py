@@ -13,6 +13,7 @@ import torch.nn.functional as F
 from metrics.calibration_error import calibration_error
 from inference import infer
 from loss.hier import get_constr_out
+from sklearn.utils.class_weight import compute_class_weight
 
 
 class Wrapper:
@@ -121,7 +122,7 @@ class Wrapper:
             # print(probas_calib, probas_uncalib)
 
             if not self.path_eval:
-                probas_calib = np.max(probas_calib_all, axis=-1)
+                probas_calib = self.predict_label_proba(probas_calib_all)
 
         return probas_calib, probas_uncalib
 
@@ -143,9 +144,11 @@ class Wrapper:
 
     def predict_label(self, probas):
         preds = np.argmax(probas, axis=-1)
-        # print(probas)
-        # preds = preds.numpy()
         return preds
+
+    def predict_label_proba(self, probas_all):
+        probas = np.max(probas_all, axis=-1)
+        return probas
 
     def nonlinear(self, logits):
         """
@@ -257,13 +260,24 @@ class WrapperNN(Wrapper):
             num_feature = pipeline['DimensionReduction'].n_components
         except:
             num_feature = X.shape[1]
-        self.model.set_params(module__dim_in=num_feature, module__dim_out=num_class) #TODO num_class is dependent on training set
 
         # Encode labels
         le = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, dtype=int)
         y_train = le.fit_transform(train_y_label.to_numpy().reshape(-1, 1)).flatten()
-        y_train, y_test = y_train, le.transform(test_y_label.to_numpy().reshape(-1, 1)).flatten()
+        y_test = le.transform(test_y_label.to_numpy().reshape(-1, 1)).flatten()
 
+        class_weight = compute_class_weight(
+            class_weight='balanced',
+            classes=np.unique(y_train),
+            y=y_train
+        )
+        class_weight = torch.from_numpy(class_weight)
+        class_weight = class_weight.float()
+        self.model.set_params(
+            module__dim_in=num_feature, 
+            module__dim_out=num_class,
+            criterion__weight=class_weight
+        )
         return pipeline, param_grid, y_train, y_test
     
     def get_logits(self, X):
@@ -279,6 +293,18 @@ class WrapperCHMC(WrapperHier):
         probas_calib = probas_calib.cpu().detach().numpy().astype(float)
         return probas_calib
 
+    def predict_label(self, probas):
+        preds = infer.infer_1(probas, self.encoder)
+        return preds
+
+    #TODO: not precise
+    def predict_label_proba(self, probas_all):
+        preds = infer.infer_1(probas_all, self.encoder)
+        probas = []
+        for idx in range(probas_all.shape[0]):
+            probas.append(probas_all[idx, preds[idx]])
+        return np.array(probas)
+
 
 class WrapperCS(WrapperHier):
     def nonlinear(self, logits):
@@ -288,6 +314,14 @@ class WrapperCS(WrapperHier):
         probas_calib = infer.infer_path_cs(probas_calib, self.encoder)
         probas_calib = infer.run_IR(probas_calib, self.encoder)
         return probas_calib
+
+    def predict_label(self, probas_all):
+        preds, _ = infer.infer_cs(probas_all, self.encoder)
+        return preds
+
+    def predict_label_proba(self, probas_all):
+        _, probas = infer.infer_cs(probas_all, self.encoder)
+        return probas
 
 class WrapperLocal(WrapperHier):
     def init_model(self, X, train_y_label, test_y_label):

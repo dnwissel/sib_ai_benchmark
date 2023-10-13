@@ -104,11 +104,11 @@ def main():
     datasets = dataloader(path)
 
     # Set Pipeline
-    for clsw in classifier_wrappers:
-        preprocessing_steps = exp_cfg['ppSteps'][:]
-        if clsw.name == 'NaiveBayes':
-            preprocessing_steps[-1] = ('StandardScaler', MinMaxScaler())
-        clsw.set_ppSteps(preprocessing_steps)
+    # for clsw in classifier_wrappers:
+    #     preprocessing_steps = exp_cfg['ppSteps'][:]
+    #     if clsw.name == 'NaiveBayes':
+    #         preprocessing_steps[-1] = ('StandardScaler', MinMaxScaler())
+    #     clsw.set_ppSteps(preprocessing_steps)
 
     # Run benchmark
     bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 

@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 
 from loss.hier import MaskBCE
 from calibration.calibrate_model import CalibratedClassifier
+from inference import infer
 
 
 
@@ -34,12 +35,14 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         self.path_eval = val
     
     def predict(self, X, threshold=0.5):
-        probas, _ = self.predict_proba(X)
-        
         if hasattr(self, 'path_eval') and self.path_eval:
+            probas, _ = self.predict_proba(X)
             return probas > threshold
 
-        preds = self._inference(probas)
+        output = self.forward(X)
+        probas = torch.sigmoid(output) 
+        probas = probas.to('cpu').numpy()
+        preds, _ = infer.infer_cs(probas, self.module.en)
         return preds
 
     def predict_proba(self, X):
@@ -48,12 +51,12 @@ class NeuralNetClassifierHier_2(NeuralNetClassifier):
         probas = probas.to('cpu').numpy()
         
         if hasattr(self, 'path_eval') and self.path_eval:
-            probas = self._inference_path(probas)
+            probas = infer.infer_path_cs(probas, self.module.en)
             probas_consitant = self.run_IR(probas)
             return probas_consitant, output
 
-        preds = self._inference(probas)
-        return preds, None  #TODO : logits
+        _, probas_consitant = infer.infer_cs(probas, self.module.en)
+        return probas_consitant, output  #TODO : logits
     
     def run_IR(self, probas):
             """ 
