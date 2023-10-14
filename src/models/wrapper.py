@@ -248,6 +248,11 @@ class WrapperSVM(Wrapper):
             confidence = np.concatenate((-1 * confidence, 1 * confidence), axis=1) # label 1 considered as positive, 
         return confidence
 
+class WrapperXGB(Wrapper):
+    def get_logits(self, X):
+        confidence = self.model_fitted.decision_function(X)
+        return confidence
+
 
 class WrapperNN(Wrapper):
     def init_model(self, X, train_y_label, test_y_label):

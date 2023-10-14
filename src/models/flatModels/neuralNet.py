@@ -92,7 +92,7 @@ params = dict(
         name='NeuralNet',
         model=NeuralNetClassifier(
             module=NeuralNet,
-            max_epochs=1 if cfg.debug else 15,
+            max_epochs=1 if cfg.debug else 30,
             criterion=nn.CrossEntropyLoss(),
             # train_split=CustomizedValidSplit(cv=0.15, stratified=True, random_state=None), # set later In case of intraDataset 
             # train_split=ValidSplit(cv=0.15, stratified=True, random_state=None), # set later In case of intraDataset 
