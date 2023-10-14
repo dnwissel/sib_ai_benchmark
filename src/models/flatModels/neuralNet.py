@@ -69,13 +69,13 @@ device = (
 )
 
 tuning_space={
-                'lr': loguniform(1e-3, 1e-2),
+                'lr': loguniform(1e-3, 1e-1),
                 # 'batch_size': (16 * np.arange(1,8)).tolist(),
                 # 'batch_size': (16 * np.arange(1,4)).tolist(),
-                'batch_size': [32],
+                'batch_size': [4, 16, 32],
                 # 'optimizer': [optim.SGD, optim.Adam],
                 'optimizer': [optim.Adam],
-                'optimizer__weight_decay': [1e-4, 3e-4],
+                'optimizer__weight_decay': loguniform(1e-4, 3e-4),
                 # 'optimizer__momentum': loguniform(1e-3, 1e0),
                 # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
                 'module__nonlin': [nn.ReLU],

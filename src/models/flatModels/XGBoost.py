@@ -13,7 +13,7 @@ from calibration.calibrate_model import CalibratedClassifier
 
 params = dict(
         name='XGBoost',
-        model=HistGradientBoostingClassifier(validation_fraction=None, max_iter=100),
+        model=HistGradientBoostingClassifier(validation_fraction=None, max_leaf_nodes=90, max_iter=100),
         preprocessing_steps=[('StandardScaler', StandardScaler())],
         tuning_space={
                 'learning_rate': loguniform(1e-3, 5e-1),  
