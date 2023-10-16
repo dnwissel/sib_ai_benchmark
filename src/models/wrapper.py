@@ -88,7 +88,8 @@ class Wrapper:
         #TODO: Validates fit and predict methods in model
 
     def ece(self, y_test, y_test_pred,  probas):
-        ece = calibration_error(y_test, y_test_pred,  probas)
+        # print(y_test, y_test_pred, probas)
+        ece = calibration_error(y_test, y_test_pred, probas)
         return ece
     
     def fit_calibrater(self, X, y):
@@ -105,7 +106,14 @@ class Wrapper:
         logits = self.get_logits(X)
 
         if logits is None:
-            probas_uncalib_all, _ = self.model_fitted.predict_proba(X)
+            res = self.model_fitted.predict_proba(X)
+            
+            if isinstance(res, tuple):
+                # For self-defined models
+                probas_uncalib_all = res[0]
+            else:
+                # Built-in LogisticRegression has only one output
+                probas_uncalib_all =res
         else:
             probas_uncalib_all = self.nonlinear(logits)
         
@@ -113,7 +121,8 @@ class Wrapper:
         probas_uncalib = probas_uncalib_all
 
         if not self.path_eval:
-            probas_uncalib = np.max(probas_uncalib_all, axis=-1)
+            # probas_uncalib = np.max(probas_uncalib_all, axis=-1)
+            probas_uncalib = self.predict_label_proba(probas_uncalib_all)
 
         if self.calibrater is not None:
             logits = self.calibrater.get_logits(X)
@@ -159,7 +168,7 @@ class Wrapper:
             logits = logits.detach().numpy()
         return softmax(logits, axis=-1)
         
-    def get_logits(self):
+    def get_logits(self, X):
         """
         If a classifier need to be calibrated, this method must be implemented
         """
@@ -349,4 +358,11 @@ class WrapperLocal(WrapperHier):
         self.model.set_encoder(en)
         return pipeline, param_grid, y_train, y_test
 
+    def predict_label(self, probas):
+        preds = infer.infer_1(probas, self.encoder)
+        return preds
+
+    #TODO: not precise
+    def predict_label_proba(self, probas_all):
+        return probas_all
      

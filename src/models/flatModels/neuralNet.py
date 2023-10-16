@@ -106,7 +106,7 @@ params = dict(
         preprocessing_steps=[('StandardScaler', StandardScaler())],
         # preprocessing_params = {'preprocessing__n_components': np.arange(10, 100, 10)},
         tuning_space=tuning_space,
-        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS', lr=0.001)
+        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS', lr=0.01)
 )
 
 

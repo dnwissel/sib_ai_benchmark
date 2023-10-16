@@ -6,6 +6,8 @@ import networkx as nx
 from models.wrapper import WrapperLocal
 from sklearn.base import clone
 from inference.infer import infer_1, infer_2
+from sklearn.preprocessing import StandardScaler
+
 
 
 class CascadedLRPost:
@@ -101,12 +103,15 @@ class CascadedLRPost:
                     cls += epsilon
                 col = np.repeat(np.log([cls]), X.shape[0]) # TODO log
             else:
-                col = cls.predict_proba(X)[:, 1] # proba for pos class
+                probas_all = cls.predict_proba(X) # proba for pos class
+                col = probas_all[:, 1] # proba for pos class
+
                 mask = (col == 0.0)
                 col[mask] += epsilon
                 col = np.log(col)
             probas.append(col)
         probas =  np.array(probas).T
+        # print(None in probas.flatten())
         return probas
 
     def predict(self, X, threshold=0.5):
@@ -114,7 +119,7 @@ class CascadedLRPost:
         marginal_probas_full = self.get_marginal_proba(log_probas)
         if self.path_eval:
             return marginal_probas_full > threshold
-        return infer_2(marginal_probas_full)
+        return infer_1(marginal_probas_full, self.encoder)
 
     def predict_proba(self, X):
         log_probas = self.predict_log_proba(X)
@@ -125,6 +130,7 @@ class CascadedLRPost:
 params = dict(
         name='CascadedLRPost',
         model=CascadedLRPost(),
+        preprocessing_steps=[('StandardScaler', StandardScaler())]
 )
 
 # Please don't change this line

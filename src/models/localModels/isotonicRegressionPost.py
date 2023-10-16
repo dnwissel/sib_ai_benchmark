@@ -11,6 +11,7 @@ from scipy import sparse
 import networkx as nx
 from models.wrapper import WrapperLocal
 from sklearn.base import clone
+from sklearn.preprocessing import StandardScaler
 
 
 class IsotonicRegressionPost:
@@ -165,6 +166,7 @@ class IsotonicRegressionPost:
 params = dict(
         name='IsotonicRegressionPost',
         model=IsotonicRegressionPost(),
+        preprocessing_steps=[('StandardScaler', StandardScaler())]
 )
 
 # Please don't change this line
