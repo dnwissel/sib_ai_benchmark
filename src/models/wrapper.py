@@ -364,5 +364,8 @@ class WrapperLocal(WrapperHier):
 
     #TODO: not precise
     def predict_label_proba(self, probas_all):
-        return probas_all
-     
+        preds = infer.infer_1(probas_all, self.encoder)
+        probas = []
+        for idx in range(probas_all.shape[0]):
+            probas.append(probas_all[idx, preds[idx]])
+        return np.array(probas)
