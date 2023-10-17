@@ -69,7 +69,8 @@ device = (
 )
 
 tuning_space={
-                'lr': loguniform(1e-3, 1e-1),
+                'lr': loguniform(1e-5, 1e-3),
+                # 'lr': [1e-5],
                 # 'batch_size': (16 * np.arange(1,8)).tolist(),
                 # 'batch_size': (16 * np.arange(1,4)).tolist(),
                 'batch_size': [4, 16, 32],
@@ -92,13 +93,13 @@ params = dict(
         name='NeuralNet',
         model=NeuralNetClassifier(
             module=NeuralNet,
-            max_epochs=1 if cfg.debug else 30,
+            max_epochs=5 if cfg.debug else 20,
             criterion=nn.CrossEntropyLoss(),
-            # train_split=CustomizedValidSplit(cv=0.15, stratified=True, random_state=None), # set later In case of intraDataset 
+            train_split=CustomizedValidSplit(cv=0.1, stratified=True, random_state=5), # set later In case of intraDataset 
             # train_split=ValidSplit(cv=0.15, stratified=True, random_state=None), # set later In case of intraDataset 
-            train_split=None,
-            verbose=0,
-            # callbacks=[EarlyStopping(patience=5)], 
+            callbacks=[EarlyStopping(patience=5)], 
+            # train_split=None,
+            verbose=3,
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],
