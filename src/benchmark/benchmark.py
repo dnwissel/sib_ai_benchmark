@@ -212,8 +212,8 @@ class Benchmark:
                     if pred_calib is not None:
                         ece = classifier.ece(y_test, pred_calib, proba_calib)
 
-                print(ece)
-                print(ece_uc)
+                # print(ece)
+                # print(ece_uc)
 
                 if ece is None:
                     pred_calib = pred_uncalib

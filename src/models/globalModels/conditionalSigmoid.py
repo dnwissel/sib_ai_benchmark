@@ -76,7 +76,7 @@ model=NeuralNetClassifierHier_2(
             train_split=None,
             # train_split=ValidSplit(cv=0.2, stratified=True, random_state=5), 
             verbose=0,
-            # callbacks=[EarlyStopping(patience=5, monitor='train_loss')], 
+            callbacks=[EarlyStopping(patience=5, monitor='train_loss')], 
             # warm_start=False,
             device=device
         )
