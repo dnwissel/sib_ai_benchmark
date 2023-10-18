@@ -17,10 +17,20 @@ from sklearn.utils.class_weight import compute_class_weight
 
 
 class Wrapper:
-    def __init__(self, model, name, tuning_space=None, preprocessing_steps=None, preprocessing_params=None, calibrater=None, is_selected=True): 
+    def __init__(
+        self, 
+        model, 
+        name, 
+        tuning_space=None, 
+        preprocessing_steps=None, 
+        preprocessing_params=None, 
+        calibrater=None, 
+        mute=False
+    ):
+
         # TODO: Move sample to app.Define sampling rate
         # TODO: Add multiple pre-processing steps
-        # TODO: Method to change default value of is_selected
+        # TODO: Method to change default value of mute
         # TODO: rename predict_proba
 
         self.__validate_input()
@@ -30,7 +40,7 @@ class Wrapper:
         self.tuning_space = tuning_space
         self.preprocessing_steps = preprocessing_steps
         self.preprocessing_params = preprocessing_params
-        self.is_selected = is_selected
+        self.mute = mute
         self.calibrater = calibrater
         self.model_fitted = None
         self.best_params = None

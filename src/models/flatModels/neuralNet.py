@@ -20,45 +20,7 @@ from scipy.stats import loguniform, uniform, randint
 from utilities.customizedValidSplit import CustomizedValidSplit
 from calibration.calibrate_model import CalibratedClassifier
 
-
-class NeuralNet(nn.Module):
-    def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers, batch_norm,  dor_input, dor_hidden, neuron_power, **kwargs):
-        super().__init__()
-
-        layers = []
-        fixed_neuron_num = 2 ** neuron_power
-        
-        # Configure input layer
-        layer = [
-            nn.Linear(dim_in, fixed_neuron_num), 
-            # nn.Dropout(dor_input), 
-            nonlin()
-        ]
-        if batch_norm:
-            layer.append(nn.BatchNorm1d(fixed_neuron_num))
-
-        layers.extend(layer)
-
-        # Configure hidden layers
-        for i in range(num_hidden_layers):
-            layer = [
-                nn.Linear(fixed_neuron_num, fixed_neuron_num), 
-                nonlin()
-            ]
-            if batch_norm:
-                layer.append(nn.BatchNorm1d(fixed_neuron_num))
-
-            layer.append(nn.Dropout(dor_hidden))
-            layers.extend(layer)
-
-        # Configure output layer
-        layers.append(nn.Linear(fixed_neuron_num, dim_out))
-        self.layers_seq = nn.Sequential(*layers)
-
-    def forward(self, X, **kwargs):
-        X = self.layers_seq(X)
-        return X
-
+from models.baseModel.net import MLP, tuning_space
 
 device = (
     "cuda"
@@ -68,38 +30,18 @@ device = (
     else "cpu"
 )
 
-tuning_space={
-                'lr': loguniform(1e-5, 1e-3),
-                # 'lr': [1e-5],
-                # 'batch_size': (16 * np.arange(1,8)).tolist(),
-                # 'batch_size': (16 * np.arange(1,4)).tolist(),
-                'batch_size': [4, 16, 32],
-                # 'optimizer': [optim.SGD, optim.Adam],
-                'optimizer': [optim.Adam],
-                'optimizer__weight_decay': loguniform(1e-4, 3e-4),
-                # 'optimizer__momentum': loguniform(1e-3, 1e0),
-                # 'module__nonlin': [nn.ReLU, nn.Tanh, nn.Sigmoid],
-                'module__nonlin': [nn.ReLU],
-                'module__batch_norm': [True, False],
-                # 'module__num_hidden_layers': np.arange(0 , 8 , 2).tolist(),
-                'module__num_hidden_layers': [1],
-                # 'module__dor_input': uniform(0, 0.3),
-                'module__neuron_power': range(9, 12),
-                'module__dor_input': [0],
-                'module__dor_hidden': uniform(0, 0.5)
-}
-
 params = dict(
         name='NeuralNet',
         model=NeuralNetClassifier(
-            module=NeuralNet,
+            module=MLP,
             max_epochs=5 if cfg.debug else 20,
             criterion=nn.CrossEntropyLoss(),
-            train_split=CustomizedValidSplit(cv=0.1, stratified=True, random_state=5), # set later In case of intraDataset 
-            # train_split=ValidSplit(cv=0.15, stratified=True, random_state=None), # set later In case of intraDataset 
-            callbacks=[EarlyStopping(patience=5)], 
+            train_split=None,
+            # train_split=CustomizedValidSplit(cv=0.1, stratified=True, random_state=5), 
+            # train_split=ValidSplit(cv=0.15, stratified=True, random_state=None), 
+            callbacks=[EarlyStopping(patience=5, monitor='train_loss')], 
             # train_split=None,
-            verbose=3,
+            verbose=0,
             device=device
         ),
         # preprocessing_steps=[('preprocessing', TruncatedSVD()),('StandardScaler', StandardScaler())],

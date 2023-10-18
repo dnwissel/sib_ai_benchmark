@@ -42,7 +42,7 @@ from metrics.hier import f1_hier, precision_hier, recall_hier
 
 
 class Benchmark:
-    def __init__(self, classifiers, datasets, tuning_mode='sample'):
+    def __init__(self, classifiers, datasets, tuning_mode='random'):
         self._validate_input(tuning_mode)
         self.tuning_mode = tuning_mode
         self.classifiers = classifiers
@@ -53,7 +53,7 @@ class Benchmark:
 
 
     def _validate_input(self,tuning_mode):
-        tuning_mode_category = ['full', 'sample']
+        tuning_mode_category = ['grid', 'random']
         if tuning_mode.lower() not in tuning_mode_category:
             raise ValueError(f'Available modes are: {", ".join(tuning_mode_category)}')
 
@@ -142,21 +142,23 @@ class Benchmark:
 
                 # Tune Params
                 else:
-                    if self.tuning_mode.lower() == 'sample':
+                    if self.tuning_mode.lower() == 'random':
                         model_selected = RandomizedSearchCV(
                             pipeline, 
                             param_grid, 
                             cv=inner_cv, 
                             scoring=inner_metrics, 
-                            n_iter=1 if cfg.debug else 15, 
+                            n_iter=1 if cfg.debug else 10, 
                             refit=True, 
                             random_state=15, 
                             n_jobs=-1
                         ) 
                     else:
                         model_selected = GridSearchCV(pipeline, param_grid, cv=inner_cv, scoring=inner_metrics, refit=True, n_jobs=-1)
-                    group_required = isinstance(inner_cv, LeaveOneGroupOut) or isinstance(inner_cv, GroupKFold) or isinstance(inner_cv, StratifiedGroupKFold)
-                    model_selected.fit(X_train, y_train, groups=inner_groups if group_required else None)
+
+                    # group_required = isinstance(inner_cv, LeaveOneGroupOut) or isinstance(inner_cv, GroupKFold) or isinstance(inner_cv, StratifiedGroupKFold)
+                    # model_selected.fit(X_train, y_train, groups=inner_groups if group_required else None)
+                    model_selected.fit(X_train, y_train, groups=inner_groups)
                 
                 if params_search_required:
                     best_params.append(model_selected.best_params_)
@@ -188,46 +190,47 @@ class Benchmark:
                         )
                 classifier.set_modelFitted(model_selected)
                 classifier.fit_calibrater(X_val_cal, y_val_cal)
-
-                y_test_proba_calib, y_test_proba_uncalib = classifier.predict_proba(X_test)
-                y_test_pred_calib, y_test_pred_uncalib = classifier.predict(X_test)
-                # print(y_test_proba_calib, y_test_proba_uncalib)
-                # print(y_test_pred_calib, y_test_pred_uncalib)
+                
+                # print("enter")
+                proba_calib, proba_uncalib = classifier.predict_proba(X_test)
+                pred_calib, pred_uncalib = classifier.predict(X_test)
+                # print(proba_calib, proba_uncalib)
+                # print(pred_calib, pred_uncalib)
 
                 ece = None
                 ece_uc = None
 
                 if self.path_eval:
                     y_test_encoded = classifier.encoder.transform(y_test)
-                    ece_uc = classifier.ece_path(y_test_encoded, y_test_pred_uncalib, y_test_proba_uncalib) # TODO None
+                    ece_uc = classifier.ece_path(y_test_encoded, pred_uncalib, proba_uncalib) # TODO None
 
-                    if y_test_pred_calib is not None:
-                        ece = classifier.ece_path(y_test_encoded, y_test_pred_calib, y_test_proba_calib)
+                    if pred_calib is not None:
+                        ece = classifier.ece_path(y_test_encoded, pred_calib, proba_calib)
                 else:
-                    ece_uc = classifier.ece(y_test, y_test_pred_uncalib, y_test_proba_uncalib)
+                    ece_uc = classifier.ece(y_test, pred_uncalib, proba_uncalib)
 
-                    if y_test_pred_calib is not None:
-                        ece = classifier.ece(y_test, y_test_pred_calib, y_test_proba_calib)
+                    if pred_calib is not None:
+                        ece = classifier.ece(y_test, pred_calib, proba_calib)
 
-                # print(ece)
-                # print(ece_uc)
+                print(ece)
+                print(ece_uc)
 
                 if ece is None:
-                    y_test_pred_calib = y_test_pred_uncalib
-                    y_test_proba_calib = y_test_proba_uncalib
+                    pred_calib = pred_uncalib
+                    proba_calib = proba_uncalib
                     ece =ece_uc
 
-                model_result.setdefault('predicts_calib', []).append(y_test_pred_calib) 
-                model_result.setdefault('predicts_uncalib', []).append(y_test_pred_uncalib) 
-                model_result.setdefault('proba_calib', []).append(y_test_proba_calib) 
-                model_result.setdefault('proba_uncalib', []).append(y_test_proba_uncalib) 
+                model_result.setdefault('predicts_calib', []).append(pred_calib) 
+                model_result.setdefault('predicts_uncalib', []).append(pred_uncalib) 
+                model_result.setdefault('proba_calib', []).append(proba_calib) 
+                model_result.setdefault('proba_uncalib', []).append(proba_uncalib) 
                 # model_result.setdefault('logits', []).append(logits.tolist() if logits is not None else logits) 
                 model_result.setdefault('ece', []).append(ece) 
                 model_result.setdefault('ece_uc', []).append(ece_uc) 
 
                 
-                y_test_pred = y_test_pred_uncalib
-                # y_test_pred = y_test_pred_calib 
+                # y_test_pred = pred_uncalib
+                y_test_pred = pred_calib 
                 # print(y_test_pred)
 
                 # Calculate metrics

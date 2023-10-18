@@ -92,21 +92,21 @@ def load_models(selected_models='all', deselected_models=None):
     classifiers = []
     for module_info in pkgutil.iter_modules(flatModels.__path__):
         module = importlib.import_module('models.flatModels.' + module_info.name)
-        if deselected_models is not None and module.wrapper.name in deselected_models:
+        if deselected_models is not None and module.wrapper.name in deselected_models or module.wrapper.mute:
             continue
         if 'all' in selected_models or 'flat' in selected_models  or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
 
     for module_info in pkgutil.iter_modules(globalModels.__path__):
         module = importlib.import_module('models.globalModels.' + module_info.name)
-        if deselected_models is not None and module.wrapper.name in deselected_models:
+        if deselected_models is not None and module.wrapper.name in deselected_models or module.wrapper.mute:
             continue
         if 'all' in selected_models or 'global' in selected_models  or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
 
     for module_info in pkgutil.iter_modules(localModels.__path__):
         module = importlib.import_module('models.localModels.' + module_info.name)
-        if deselected_models is not None and module.wrapper.name in deselected_models:
+        if deselected_models is not None and module.wrapper.name in deselected_models or module.wrapper.mute:
             continue
         if 'all' in selected_models or 'local' in selected_models  or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)

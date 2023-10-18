@@ -96,14 +96,16 @@ def _lhs_dp(node, en, row, memo):
     s_prime_pos = list(map(partial(_lhs_dp, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
     lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
     memo[node] = lh
-    return memo[node]
+    return lh
     
 
 def infer_cs(probas, encoder):
     y_pred = np.zeros(probas.shape[0])
     y_probas = np.zeros(probas.shape[0])
+    num_nodes = probas.shape[1]
+
     for row_idx, row in enumerate(probas):
-        memo = np.zeros(len(encoder.G_idx.nodes())) - 1
+        memo = np.zeros(num_nodes) - 1
         
         lhs = np.zeros(len(encoder.label_idx))
         for root in encoder.roots_idx:
@@ -114,6 +116,7 @@ def infer_cs(probas, encoder):
             lh_children = np.prod(1 -  row[list(encoder.successor_dict[label])])
             lhs[idx] = lh_ * lh_children
         y_pred[row_idx] = encoder.label_idx[np.argmax(lhs)]
+
         lhs_norm = lhs / lhs.sum()
         y_probas[row_idx] = np.max(lhs_norm)
     return y_pred, y_probas
@@ -122,10 +125,11 @@ def infer_cs(probas, encoder):
 def infer_path_cs(probas, encoder):
     probas_margin = np.zeros(probas.shape)
     num_nodes = probas.shape[1]
+
     for row_idx, row in enumerate(probas):
         memo = np.zeros(num_nodes) - 1
-
         lhs = np.zeros(num_nodes)
+
         for root in encoder.roots_idx:
             # print(root)
             lhs[root] = 1.0
@@ -141,6 +145,7 @@ def infer_path_cs(probas, encoder):
             lhs[label] = lh_
         probas_margin[row_idx] = lhs
     return probas_margin
+
 
 def infer_1(probas, encoder, threshold=0.5):
     """
