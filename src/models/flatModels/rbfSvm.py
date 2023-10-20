@@ -21,7 +21,8 @@ params = dict(
                 'gamma': ['scale', 'auto'],
                 'class_weight':['balanced', None]
         },
-        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS')
+        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='VS', lr=0.01)
+        # calibrater=CalibratedClassifier(criterion=F.binary_cross_entropy_with_logits, method='VS')
 
 )
 

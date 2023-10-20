@@ -30,7 +30,7 @@ params = dict(
                 'C': loguniform(1e-1, 1e1),  # C: Penalty parameter in Soft margin SVM
                 'class_weight':['balanced', None]
         },
-        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS')
+        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='VS', lr=0.01)
     
 )
 

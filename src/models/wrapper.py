@@ -90,6 +90,7 @@ class Wrapper:
         y_train = le.fit_transform(train_y_label.to_numpy().reshape(-1, 1)).flatten()
         y_train, y_test = y_train, le.transform(test_y_label.to_numpy().reshape(-1, 1)).flatten()
         
+        # print(y_test)
         return pipeline, param_grid, y_train, y_test
 
     def __validate_input(self, model=None):
@@ -123,7 +124,7 @@ class Wrapper:
                 probas_uncalib_all = res[0]
             else:
                 # Built-in LogisticRegression has only one output
-                probas_uncalib_all =res
+                probas_uncalib_all = res
         else:
             probas_uncalib_all = self.nonlinear(logits)
         
@@ -147,18 +148,27 @@ class Wrapper:
 
     def predict(self, X, threshold=0.5):
         preds_uncalib = self.model_fitted.predict(X)
+
+        logits = self.get_logits(X)
+        probas_uncalib_all = self.nonlinear(logits)
+        # print(probas_uncalib_all[1, :])
+        preds_uncalib = self.predict_label(probas_uncalib_all)
+
         preds_calib = None
 
         if self.calibrater is not None:
             # if probas_calib_all is None:
             logits = self.calibrater.get_logits(X)
             probas_calib_all = self.nonlinear(logits)
+            # print(probas_calib_all[1, :])
                 
             if self.path_eval:
                 preds_calib = probas_calib_all > threshold
             else:
                 preds_calib = self.predict_label(probas_calib_all)
+
         # print(preds_calib)
+        # print(preds_uncalib)
         return preds_calib, preds_uncalib
 
     def predict_label(self, probas):
@@ -263,9 +273,11 @@ class WrapperSVM(Wrapper):
     def get_logits(self, X):
         confidence = self.model_fitted.decision_function(X)
         if confidence.ndim == 1 or confidence.shape[1] == 1:
+            # print(confidence.shape)
             confidence = np.reshape(confidence, (-1, 1))
             confidence = np.concatenate((-1 * confidence, 1 * confidence), axis=1) # label 1 considered as positive, 
         return confidence
+
 
 class WrapperXGB(Wrapper):
     def get_logits(self, X):

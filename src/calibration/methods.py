@@ -39,7 +39,7 @@ class MatrixScaling(nn.Module):
 class TemperatureScaling(nn.Module):
     def __init__(self):
         super().__init__()
-        self.temperature = nn.Parameter(torch.ones(1) * 1.5)
+        self.temperature = nn.Parameter(torch.tensor(1.5))
         self.params = [self.temperature]
 
     def forward(self, logits):

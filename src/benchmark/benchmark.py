@@ -227,10 +227,9 @@ class Benchmark:
                 # model_result.setdefault('logits', []).append(logits.tolist() if logits is not None else logits) 
                 model_result.setdefault('ece', []).append(ece) 
                 model_result.setdefault('ece_uc', []).append(ece_uc) 
-
                 
                 # y_test_pred = pred_uncalib
-                y_test_pred = pred_calib 
+                y_test_pred = pred_calib
                 # print(y_test_pred)
 
                 # Calculate metrics

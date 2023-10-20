@@ -62,11 +62,13 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         self.temperature = None
         self.encoder = encoder
         self.lr = lr
+        self.method_trained = None
 
     def set_model(self, model):
         self.classifier = model
 
     def fit(self, X, y): 
+        # print(y)
         logits = self.classifier.get_logits(X)
         if self.method_name == 'TS':
             method = TemperatureScaling().to(device)
@@ -90,9 +92,12 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
                 # y = y.astype(np.float32)
                 target = torch.from_numpy(y).to(device)
 
+        # target = F.one_hot(target, num_classes=logits.shape[1])
+        # target = target.float()
+
         # print(input.device, target.device)
         # self.method = train_model(method, input, target, self.criterion, self.optimizer, 50)
-        self.method = train_model_lbfgs(method, input, target, self.criterion)
+        self.method_trained = train_model_lbfgs(method, input, target, self.criterion)
         return self
 
     # #TODO: argmax for PS/VS
@@ -104,13 +109,15 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
 
     def get_logits(self, X):
         logits = self.classifier.get_logits(X)
-
+        # print(logits)
         if torch.is_tensor(logits):
             input = logits
         else:
-            input = torch.from_numpy(logits).to(torch.float).to(device)
-            
-        output = self.method(input)
+            input = torch.from_numpy(logits).float().to(device)
+        
+        # input = input.double()
+        output = self.method_trained(input)
+        # [print(param) for param in self.method_trained.parameters()]
         return output
 
     
