@@ -149,10 +149,10 @@ class Wrapper:
     def predict(self, X, threshold=0.5):
         preds_uncalib = self.model_fitted.predict(X)
 
-        logits = self.get_logits(X)
-        probas_uncalib_all = self.nonlinear(logits)
-        # print(probas_uncalib_all[1, :])
-        preds_uncalib = self.predict_label(probas_uncalib_all)
+        # logits = self.get_logits(X)
+        # probas_uncalib_all = self.nonlinear(logits)
+        # # print(probas_uncalib_all[1, :])
+        # preds_uncalib = self.predict_label(probas_uncalib_all)
 
         preds_calib = None
 
