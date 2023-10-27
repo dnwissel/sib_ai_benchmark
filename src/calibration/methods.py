@@ -43,6 +43,11 @@ class TemperatureScaling(nn.Module):
         self.params = [self.temperature]
 
     def forward(self, logits):
+        # self.temperature = torch.clamp(self.temperature, min=1e-5)
+        # min_temp = nn.Parameter(self.temperature.clamp(min=1e-5))
+        # self.temperature = min_temp
+        # self.params = [self.temperature]
+
         return logits / self.temperature # logSoftmax in CrossEntropyLoss()
         # return F.softmax(/logits / self.temperature, dim=-1)
 

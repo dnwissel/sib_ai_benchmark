@@ -115,9 +115,13 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         else:
             input = torch.from_numpy(logits).float().to(device)
         
-        # input = input.double()
         output = self.method_trained(input)
-        # [print(param) for param in self.method_trained.parameters()]
+
+        if self.method_name == 'TS':
+            params = list(self.method_trained.parameters())
+            T = params[0]
+            assert T  > 0, f"Get negative temperature {T}"
+        
         return output
 
     
