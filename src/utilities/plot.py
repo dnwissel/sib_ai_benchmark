@@ -97,7 +97,10 @@ def plot(results, metric_name, path, ncols=2):
 
     tissue_names = list(results['datasets'].keys())
     tissue_names = sorted(tissue_names)
+
     model_names = results['datasets'][tissue_names[0]]['model_results'].keys()
+    model_names = sorted(model_names)
+
 
     info['labels'] = list(model_names)
     info['metric_name'] = metric_name
@@ -122,7 +125,6 @@ def plot(results, metric_name, path, ncols=2):
     # print(axs.shape)
     cnt = 0
     for row_idx in range(axs.shape[0]):
-
         if len(axs.shape) > 1:
             for col_idx in range(axs.shape[1]):
                 if cnt < len(tissue_names):
@@ -139,14 +141,12 @@ def plot(results, metric_name, path, ncols=2):
                 axs[row_idx].axis('off')
             cnt += 1 
 
-
     # configure x/y labels
     # for ax in axs.flat:
     #     ax.label_outer()
     plt.subplots_adjust(wspace=0.5, hspace=1)
     plt.savefig(path)
     # plt.show()
-
 
 def load_res(path):
     fns = []

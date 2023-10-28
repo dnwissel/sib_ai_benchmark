@@ -104,7 +104,7 @@ class Benchmark:
 
                 # Hold-out validation set for calibration
                 cal_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=5) # TODO: Global seed
-                train_idx, val_idx_cal = next(cal_cv.split(X_train, y_train)) 
+                train_idx, val_idx_cal = next(cal_cv.split(X_train, y_train))
                 X_train, X_val_cal = X_train[train_idx], X_train[val_idx_cal]
                 y_train, y_val_cal = y_train[train_idx], y_train[val_idx_cal]
                 inner_groups = inner_groups[train_idx]

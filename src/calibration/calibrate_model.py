@@ -120,7 +120,7 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         if self.method_name == 'TS':
             params = list(self.method_trained.parameters())
             T = params[0]
-            assert T  > 0, f"Get negative temperature {T}"
+            assert T > 0, f"Get negative temperature {T}"
         
         return output
 

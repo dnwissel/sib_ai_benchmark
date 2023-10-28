@@ -8,6 +8,7 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
+
 class VectorScaling(nn.Module):
     def __init__(self, logits_len):
         super().__init__()
