@@ -5,24 +5,34 @@ from matplotlib.patches import Polygon
 from pathlib import Path
 import os
 import pickle
+from functools import partial
 
-def highlight_max(row):
-    max_value = max(row)
-    max_value_format = "{:.4f}".format(max_value)
-    bold_max_value = f"\\textbf{{{max_value_format}}}"
+def highlight(row, type='max'):
+    
+
+    if type == 'max':
+        value = max(row)
+    else:
+        row = [np.median(x) for x in row]
+        value = min(row)
+
+    # print(value)
+    value_format = "{:.4f}".format(value)
+    bold_value = f"\\textbf{{{value_format}}}"
 
     for idx, val in enumerate(row):
-        if val == max_value:
-            row[idx] = bold_max_value
+        if val == value:
+            row[idx] = bold_value
         else:
             row[idx] = "{:.4f}".format(val)
 
     return row
 
-# formatted_matrix = np.apply_along_axis(highlight_max, axis=1, arr=matrix)
+
+# formatted_matrix = np.apply_along_axis(highlight, axis=1, arr=matrix)
 
 
-def get_table(results, metric_name):
+def get_table(results, metric_name, best):
     # Prepare data
     data = []
     info = {}
@@ -60,7 +70,7 @@ def get_table(results, metric_name):
     # get table list
     data = np.array(data, dtype='object')
     # TODO add bold
-    data = np.apply_along_axis(highlight_max, axis=1, arr=data)
+    data = np.apply_along_axis(partial(highlight, type=best), axis=1, arr=data)
     # print(data.shape)
 
     idx = tissue_names.index('proboscis_and_maxpalp')
@@ -98,7 +108,13 @@ if __name__ == "__main__":
     fns = load_res(path_res)
 
     # path_res = os.path.join(parent_path, "results/")
-    # fns = ['scanvi_bcm_global_local_path-eval.pkl']
+    fns = ['scanvi_bcm_flat.pkl']
+    metric_name = 'F1_SCORE_MACRO'.lower()
+    best = 'max'
+    
+    # metric_name = 'ECE'.lower()
+    # best = 'min'
+
     print(fns)
 
     # ece
@@ -111,9 +127,8 @@ if __name__ == "__main__":
         print('\n')
         with open(path_res + f'/{fn}', 'rb') as fh:
             results = pickle.load(fh)
-        metric_name = 'F1_SCORE_MACRO'.lower()
         
-        table, model_names = get_table(results, metric_name)
+        table, model_names = get_table(results, metric_name, best)
         header = ['Tissue']
         header.extend(model_names)
         table_code(table, header)

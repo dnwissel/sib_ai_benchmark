@@ -19,7 +19,7 @@ params = dict(
                 'learning_rate': loguniform(1e-3, 5e-1),  
                 'class_weight': ['balanced', None]
         },
-        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='TS', lr=0.01)
+        calibrater=CalibratedClassifier(criterion=nn.CrossEntropyLoss(), method='VS', lr=0.01)
 )
 
 
