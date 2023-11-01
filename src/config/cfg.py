@@ -5,8 +5,8 @@ from utilities.toDense import ToDense
 from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-debug = False
-# debug = True
+# debug = False
+debug = True
 
 #TODO: put embeddings under data/
 parent_path = Path(__file__).parents[2]
@@ -33,7 +33,7 @@ experiments = {
         'dataloader': dl.load_tissue_raw,
         'is_pre_splits': False,
         'model_type': 'flat',
-        'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)), ('ToDense', ToDense()), ('StandardScaler', StandardScaler(with_mean=True))],
+        'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)), ('StandardScaler', StandardScaler(with_mean=True))],
         'ppParams': None,
     },
     
