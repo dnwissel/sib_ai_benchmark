@@ -33,7 +33,7 @@ experiments = {
         'dataloader': dl.load_tissue_raw,
         'is_pre_splits': False,
         'model_type': 'flat',
-        'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)),('StandardScaler', StandardScaler(with_mean=False))],
+        'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)), ('ToDense', ToDense()), ('StandardScaler', StandardScaler(with_mean=True))],
         'ppParams': None,
     },
     
