@@ -144,8 +144,8 @@ def plot(results, metric_name, path, ncols=2):
     # configure x/y labels
     # for ax in axs.flat:
     #     ax.label_outer()
-    plt.subplots_adjust(wspace=0.5, hspace=1)
-    plt.savefig(path)
+    plt.subplots_adjust(wspace=0.25, hspace=0.8)
+    plt.savefig(path, dpi=450)
     # plt.show()
 
 def load_res(path):
@@ -177,4 +177,5 @@ if __name__ == "__main__":
 
         with open(path_res + f'/{fn}', 'rb') as fh:
             results = pickle.load(fh)
-        plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}'[:-4])
+        fn = fn[:-4] + '.pdf'
+        plot(results, metric_name, path_res + f'/plots/{metric_name}/{fn}')
