@@ -44,7 +44,7 @@ def table_flat(data, col_names, row_names, best, header=['Tissue'], colalign=("c
 
 
 
-def get_scores(results, metric_name):
+def get_scores(results, metric_name, model_names='all'):
     # Prepare data
     data = []
     info = {}
@@ -58,9 +58,10 @@ def get_scores(results, metric_name):
 
     tissue_names = sorted(tissue_names)
 
-    model_names = results['datasets'][tissue_names[0]]['model_results'].keys()
-    model_names = [mn for mn in model_names if mn != 'NaiveBayes']
-    model_names = sorted(model_names)
+    if model_names=='all':
+        model_names = results['datasets'][tissue_names[0]]['model_results'].keys()
+        model_names = [mn for mn in model_names if mn != 'NaiveBayes']
+        model_names = sorted(model_names)
 
     info['labels'] = list(model_names)
     info['metric_name'] = metric_name
@@ -103,69 +104,82 @@ def load_res(path):
 if __name__ == "__main__":
     parent_path = Path(__file__).parents[2]
     path_res = os.path.join(parent_path, 'results/flat')
+    path_res_hier = os.path.join(parent_path, 'results/hier')
 
-    fns = load_res(path_res)
-    fns = ['pca__flat.pkl', 'scanvi__flat.pkl', 'scanvi_b_flat.pkl', 'scanvi_bcm_flat.pkl']
+    # fns = load_res(path_res)
+    fns = ['scanvi_bcm_flat.pkl']
+    fns_hier = ['scanvi_bcm_global_local.pkl']
 
     metric_name = 'F1_SCORE_MACRO'.lower()
     best = 'max'
     
-    # metric_name = 'ECE'.lower()
-    # best = 'min'
+    metric_name = 'ECE'.lower()
+    best = 'min'
 
     print(fns)
 
     # ================================= flat 
-    if  True:
-        print("\\begin{table}[h]")
-        print("\\centering")
-
+    model_names = ['RBFSVM', 'LogisticRegression', 'NeuralNet']
+    model_names_hier = ['C-HMCNN', 'ConditionalSigmoid', 'CascadedLRPost', 'IsotonicRegressionPost']
+    if not True:
         for fn in fns:
             # if 'path-eval' in fn  or 'global' in fn:
                 # continue
-            print('\n')
             with open(path_res + f'/{fn}', 'rb') as fh:
                 results = pickle.load(fh)
             
-            data, tissue_names, model_names = get_scores(results, metric_name)
-            latex_code = table_flat(data, model_names, tissue_names, best)
+            data, tissue_names, model_names = get_scores(results, metric_name, model_names)
 
-            print(latex_code)
+        for fn in fns_hier:
+            # if 'path-eval' in fn  or 'global' in fn:
+                # continue
+            with open(path_res_hier + f'/{fn}', 'rb') as fh:
+                results = pickle.load(fh)
+            
+            data_hier, tissue_names, model_names_hier = get_scores(results, metric_name, model_names_hier)
 
-            fn = fn[:-4]
-            fn = fn.replace('_', '\_')
-            print(f"\\caption{{F1 score macro of {fn}}}")
-            print("\\hspace{3em}")
+        data = np.append(data_hier, data, axis=1)
+        print(data.shape)
 
+        
+        col_names = ['C-HMCNN', 'ConditionalSigmoid', 'CLR', 'IR', 'RBFSVM', 'LR', 'NeuralNet']
+        # col_names = np.append(col_names, model_names, axis=0)
+
+
+        latex_code = table_flat(data, col_names, tissue_names, best, header=['Tissues'], colalign=("center",) * 8)
+
+        print("\\begin{table}[h]")
+        print("\\centering")
+        
+        print(latex_code)
+
+        print(f"\\caption{{F1 score macro of all tissues on scanvi\_bcm for flat, global and local models}}")
         print("\\end{table}")
 
+    # ================================= global
+    fns_hier = ['scanvi_bcm_global_local_path-eval.pkl']
+    model_names_hier = ['C-HMCNN', 'ConditionalSigmoid', 'CascadedLRPost', 'IsotonicRegressionPost']
 
-    # ================================= flat mean
-    if  False:
+    metric_name = 'F1_SCORE_MACRO'.lower()
+    best = 'max'
+    
+    metric_name = 'ECE'.lower()
+    best = 'min'
+    if  True:
         mean_data = []
         row_names = []
         col_names = []
-        for fn in fns:
+        for fn in fns_hier:
             # if 'path-eval' in fn  or 'global' in fn:
                 # continue
-            print('\n')
-            with open(path_res + f'/{fn}', 'rb') as fh:
+            with open(path_res_hier + f'/{fn}', 'rb') as fh:
                 results = pickle.load(fh)
             
-            data, tissue_names, model_names = get_scores(results, metric_name)
-            row_names = model_names
-            mean = np.mean(data, axis=0)
-            mean_data.append(mean)
+            data_hier, tissue_names, model_names_hier = get_scores(results, metric_name, model_names_hier)
 
-            fn = fn[:-4]
-            fn = fn.replace('_', '\_')
-            col_names.append(fn)
+        col_names = ['C-HMCNN', 'ConditionalSigmoid', 'CLR', 'IR']
 
-        mean_data = np.array(mean_data)
-        mean_data = mean_data.T
-        # print(mean_data.shape)
-
-        latex_code = table_flat(mean_data, col_names, row_names, best, header=['Models'], colalign=("center",) * 5)
+        latex_code = table_flat(data_hier, col_names, tissue_names, best, header=['Tissues'], colalign=("center",) * 5)
 
         print("\\begin{table}[h]")
         print("\\centering")
