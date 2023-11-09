@@ -92,6 +92,56 @@ def get_scores(results, metric_name, model_names='all'):
     return data, row_names, col_names
 
 
+def get_scores_uncalib(results, metric_name, model_names='all'):
+    # Prepare data
+    data = []
+    info = {}
+
+    tissue_names = list(results['datasets'].keys())
+
+    try:
+        tissue_names.remove('gut')
+    except:
+        pass
+
+    tissue_names = sorted(tissue_names)
+
+    if model_names=='all':
+        model_names = results['datasets'][tissue_names[0]]['model_results'].keys()
+        model_names = [mn for mn in model_names if mn != 'NaiveBayes']
+        model_names = sorted(model_names)
+
+    info['labels'] = list(model_names)
+    info['metric_name'] = metric_name
+
+    # print(info['labels'])
+    for tn in tissue_names:
+        res_tissue = results['datasets'][tn]['model_results']
+        true_labels = results['datasets'][tn]['true_labels_test']
+        
+        res_model =[]
+        for mn in model_names:
+            #TODO: refactor benchmark
+            if metric_name in ['ece', 'ece_uc']:
+                res_model.append(res_tissue[mn][metric_name])
+            else:
+                median = res_tissue[mn]['scores'][metric_name]['median']
+                median = round(median, 4)
+                res_model.append(median)
+        data.append(res_model)
+
+    # get table list
+    data = np.array(data, dtype='object')
+
+    idx = tissue_names.index('proboscis_and_maxpalp')
+    tissue_names[idx] = 'proboscis\_and\_maxpalp'
+    tissue_names = np.array(tissue_names)
+
+    row_names = tissue_names
+    col_names = model_names
+    return data, row_names, col_names
+
+
 # TODO: ACC against ece
 def load_res(path):
     fns = []
@@ -113,15 +163,15 @@ if __name__ == "__main__":
     metric_name = 'F1_SCORE_MACRO'.lower()
     best = 'max'
     
-    metric_name = 'ECE'.lower()
-    best = 'min'
+    # metric_name = 'ECE'.lower()
+    # best = 'min'
 
     print(fns)
 
     # ================================= flat 
     model_names = ['RBFSVM', 'LogisticRegression', 'NeuralNet']
     model_names_hier = ['C-HMCNN', 'ConditionalSigmoid', 'CascadedLRPost', 'IsotonicRegressionPost']
-    if not True:
+    if  False:
         for fn in fns:
             # if 'path-eval' in fn  or 'global' in fn:
                 # continue
@@ -156,16 +206,16 @@ if __name__ == "__main__":
         print(f"\\caption{{F1 score macro of all tissues on scanvi\_bcm for flat, global and local models}}")
         print("\\end{table}")
 
-    # ================================= global
+    # ================================= global path
     fns_hier = ['scanvi_bcm_global_local_path-eval.pkl']
     model_names_hier = ['C-HMCNN', 'ConditionalSigmoid', 'CascadedLRPost', 'IsotonicRegressionPost']
 
-    metric_name = 'F1_SCORE_MACRO'.lower()
+    metric_name = 'F1_hier'.lower()
     best = 'max'
     
     metric_name = 'ECE'.lower()
     best = 'min'
-    if  True:
+    if  False:
         mean_data = []
         row_names = []
         col_names = []
@@ -186,5 +236,40 @@ if __name__ == "__main__":
         
         print(latex_code)
 
-        print(f"\\caption{{Mean value of F1 score macro of all tissues per pre-processing method}}")
+        print(f"\\caption{{{metric_name.upper()} of all tissues per pre-processing method}}")
         print("\\end{table}")
+    
+
+    # ================================= global mean
+    fns_hier = ['scanvi_bcm_global_local_path-eval.pkl']
+    model_names_hier = ['C-HMCNN', 'ConditionalSigmoid', 'CascadedLRPost', 'IsotonicRegressionPost']
+
+    metric_name = 'F1_hier'.lower()
+    best = 'max'
+    if  True:
+        mean_data = []
+        row_names = ['mean']
+        col_names = []
+
+        for fn in fns_hier:
+            # if 'path-eval' in fn  or 'global' in fn:
+                # continue
+            with open(path_res_hier + f'/{fn}', 'rb') as fh:
+                results = pickle.load(fh)
+            
+            data_hier, tissue_names, model_names_hier = get_scores(results, metric_name, model_names_hier)
+
+        col_names = ['C-HMCNN', 'ConditionalSigmoid', 'CLR', 'IR']
+        data_hier = np.mean(data_hier, axis=0).reshape(1,-1)
+        print(data_hier)
+
+        latex_code = table_flat(data_hier, col_names, row_names, best, header=['Metric'], colalign=("center",) * 5)
+
+        print("\\begin{table}[h]")
+        print("\\centering")
+        
+        print(latex_code)
+
+        print(f"\\caption{{Mean {metric_name.upper()} of all tissues for global and local}}")
+        print("\\end{table}")
+       
