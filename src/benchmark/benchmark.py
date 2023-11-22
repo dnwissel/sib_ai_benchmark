@@ -62,6 +62,8 @@ class Benchmark:
 
     def _train(self, inner_cv, inner_metrics, outer_metrics, outer_cv=None, dataset=None, pre_splits=None):
         true_labels_test = []
+        true_labels_test_encoded = []
+        idx_to_evals = []
         nodes_label = []
         test_row_ids = []
         res = {}
@@ -113,6 +115,8 @@ class Benchmark:
                     true_labels_test.append(y_test.tolist())
                     if classifier.encoder is not None:
                         nodes_label.append(classifier.encoder.labels_ordered)
+                        true_labels_test_encoded.append(classifier.encoder.transform(y_test))
+                        idx_to_evals.append(classifier.encoder.idx_to_eval)
                     test_row_ids.append(row_ids_split.tolist())
 
                 # Set Hier metric
@@ -148,7 +152,7 @@ class Benchmark:
                             param_grid, 
                             cv=inner_cv, 
                             scoring=inner_metrics, 
-                            n_iter=1 if cfg.debug else 10, 
+                            n_iter=1 if cfg.debug else 1, 
                             refit=True, 
                             random_state=15, 
                             n_jobs=-1
@@ -254,7 +258,7 @@ class Benchmark:
             
             self.logger.write('', msg_type='content')
 
-        return res, true_labels_test, test_row_ids, nodes_label
+        return res, true_labels_test, test_row_ids, nodes_label, true_labels_test_encoded, idx_to_evals
     
 
     def save(self, dir):
@@ -305,13 +309,15 @@ class Benchmark:
                 inner_cv = LeaveOneGroupOut()
                 
             if not is_pre_splits:
-                model_results, true_labels_test, test_row_ids, nodes_label = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
+                model_results, true_labels_test, test_row_ids, nodes_label, true_labels_test_encoded, idx_to_evals = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv, dataset=dataset)
             else:
-                model_results, true_labels_test, test_row_ids, nodes_label = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv,pre_splits=dataset)
+                model_results, true_labels_test, test_row_ids, nodes_label, true_labels_test_encoded, idx_to_evals = self._train(inner_cv, inner_metrics, outer_metrics, outer_cv=outer_cv,pre_splits=dataset)
 
             self.results.setdefault('datasets', {}).update({dn: {
                 'model_results': model_results, 
                 'true_labels_test': true_labels_test,
+                'true_labels_test_encoded': true_labels_test_encoded,
+                'idx_to_evals': idx_to_evals,
                 'test_row_ids': test_row_ids,
                 'nodes_label': nodes_label
             }})

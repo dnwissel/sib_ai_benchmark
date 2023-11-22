@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import pickle
 from functools import partial
+from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
 
 
 def highlight(row, type='max'):
@@ -91,6 +92,62 @@ def get_scores(results, metric_name):
     return data, row_names, col_names
 
 
+def get_scores_uncalib(results, metric_name):
+    # Prepare data
+    data = []
+    info = {}
+
+    tissue_names = list(results['datasets'].keys())
+
+    try:
+        tissue_names.remove('gut')
+    except:
+        pass
+
+    tissue_names = sorted(tissue_names)
+
+    model_names = results['datasets'][tissue_names[0]]['model_results'].keys()
+    model_names = [mn for mn in model_names if mn != 'NaiveBayes']
+    model_names = sorted(model_names)
+
+    info['labels'] = list(model_names)
+    info['metric_name'] = metric_name
+
+    # print(info['labels'])
+    for tn in tissue_names:
+        res_tissue = results['datasets'][tn]['model_results']
+        true_labels = results['datasets'][tn]['true_labels_test']
+
+        res_model =[]
+        for mn in model_names:
+            #TODO: refactor benchmark
+            if metric_name in ['ece', 'ece_uc']:
+                res_model.append(res_tissue[mn][metric_name])
+            else:
+                preds = res_tissue[mn]['predicts_uncalib']
+                # n_splits = preds.shape[0]
+                n_splits = len(preds)
+                scores = []
+                for idx in range(n_splits):
+                    score_ = f1_score(true_labels[idx], preds[idx], average='macro')
+                    scores.append(score_)
+                median = np.median(scores)
+                median = round(median, 4)
+                res_model.append(median)
+        data.append(res_model)
+
+    # get table list
+    data = np.array(data, dtype='object')
+
+    idx = tissue_names.index('proboscis_and_maxpalp')
+    tissue_names[idx] = 'proboscis\_and\_maxpalp'
+    tissue_names = np.array(tissue_names)
+
+    row_names = tissue_names
+    col_names = model_names
+    return data, row_names, col_names
+
+
 # TODO: ACC against ece
 def load_res(path):
     fns = []
@@ -106,6 +163,7 @@ if __name__ == "__main__":
 
     fns = load_res(path_res)
     fns = ['pca__flat.pkl', 'scanvi__flat.pkl', 'scanvi_b_flat.pkl', 'scanvi_bcm_flat.pkl']
+    fns = [ 'scanvi_bcm_flat.pkl']
 
     metric_name = 'F1_SCORE_MACRO'.lower()
     best = 'max'
@@ -127,7 +185,8 @@ if __name__ == "__main__":
             with open(path_res + f'/{fn}', 'rb') as fh:
                 results = pickle.load(fh)
             
-            data, tissue_names, model_names = get_scores(results, metric_name)
+            # data, tissue_names, model_names = get_scores(results, metric_name)
+            data, tissue_names, model_names = get_scores_uncalib(results, metric_name=None)
             latex_code = table_flat(data, model_names, tissue_names, best)
 
             print(latex_code)

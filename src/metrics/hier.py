@@ -31,6 +31,21 @@ def precision_hier(y_true, y_pred, en):
     score = precision(y_true_labels, y_pred_labels)
     return score
 
+def f1_hier_report(y_true, y_pred, idx_to_eval):
+    # y_true_encoded = en.transform(y_true)
+
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    # print(y_true.shape)
+    # print(y_pred.shape)
+    y_true_labels = to_labels(y_true[:, idx_to_eval])
+    y_pred_labels = to_labels(y_pred[:, idx_to_eval])
+
+    # print(y_true_labels, y_pred_labels)
+    score = f1(y_true_labels, y_pred_labels)
+    return score
+
+
 def to_labels(y):
     labels = []
     idxs = np.arange(y.shape[1])

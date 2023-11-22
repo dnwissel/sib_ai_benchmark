@@ -7,6 +7,11 @@ import os
 import pickle
 from functools import partial
 
+from metrics.hier import f1_hier_report
+from sklearn.metrics import average_precision_score
+import numpy as np
+import torch
+
 
 def highlight(row, type='max'):
     if type == 'max':
@@ -91,8 +96,7 @@ def get_scores(results, metric_name, model_names='all'):
     col_names = model_names
     return data, row_names, col_names
 
-
-def get_scores_uncalib(results, metric_name, model_names='all'):
+def get_scores_uncalib(results, results_encoded, metric_name=None, model_names='all'):
     # Prepare data
     data = []
     info = {}
@@ -105,7 +109,6 @@ def get_scores_uncalib(results, metric_name, model_names='all'):
         pass
 
     tissue_names = sorted(tissue_names)
-
     if model_names=='all':
         model_names = results['datasets'][tissue_names[0]]['model_results'].keys()
         model_names = [mn for mn in model_names if mn != 'NaiveBayes']
@@ -117,15 +120,32 @@ def get_scores_uncalib(results, metric_name, model_names='all'):
     # print(info['labels'])
     for tn in tissue_names:
         res_tissue = results['datasets'][tn]['model_results']
-        true_labels = results['datasets'][tn]['true_labels_test']
-        
+        true_labels = results_encoded['datasets'][tn]['true_labels_test_encoded']
+        idx_to_evals = results_encoded['datasets'][tn]['idx_to_evals']
+
+        # true_labels = sorted(true_labels, key = lambda x : len(x))
+        # true_shapes = [len(elem) for elem in true_labels]
+        # print(tn, true_shapes)
+
+
         res_model =[]
         for mn in model_names:
             #TODO: refactor benchmark
             if metric_name in ['ece', 'ece_uc']:
                 res_model.append(res_tissue[mn][metric_name])
             else:
-                median = res_tissue[mn]['scores'][metric_name]['median']
+                preds = res_tissue[mn]['predicts_uncalib']
+                # preds = res_tissue[mn]['predicts_calib']
+                # preds = sorted(preds, key = lambda x : len(x))
+                # preds_shapes = [len(elem) for elem in preds]
+                # print(preds_shapes)
+                # n_splits = preds.shape[0]
+                n_splits = len(preds)
+                scores = []
+                for idx in range(n_splits):
+                    score_ = f1_hier_report(true_labels[idx], preds[idx], idx_to_evals[idx])
+                    scores.append(score_)
+                median = np.median(scores)
                 median = round(median, 4)
                 res_model.append(median)
         data.append(res_model)
@@ -152,7 +172,7 @@ def load_res(path):
 
 
 if __name__ == "__main__":
-    parent_path = Path(__file__).parents[2]
+    parent_path = Path(__file__).parents[1]
     path_res = os.path.join(parent_path, 'results/flat')
     path_res_hier = os.path.join(parent_path, 'results/hier')
 
@@ -168,7 +188,7 @@ if __name__ == "__main__":
 
     print(fns)
 
-    # ================================= flat 
+    # ================================= flat + global
     model_names = ['RBFSVM', 'LogisticRegression', 'NeuralNet']
     model_names_hier = ['C-HMCNN', 'ConditionalSigmoid', 'CascadedLRPost', 'IsotonicRegressionPost']
     if  False:
@@ -238,6 +258,44 @@ if __name__ == "__main__":
 
         print(f"\\caption{{{metric_name.upper()} of all tissues per pre-processing method}}")
         print("\\end{table}")
+
+    # ================================= global path uncalib
+    fns_hier = ['scanvi_bcm_global_local_path-eval.pkl']
+    fns_encoders = ['scanvi_bcm_local_path-eval.pkl']
+    model_names_hier = ['C-HMCNN', 'ConditionalSigmoid', 'CascadedLRPost', 'IsotonicRegressionPost']
+
+    metric_name = 'F1_hier'.lower()
+    best = 'max'
+    
+    # metric_name = 'ECE'.lower()
+    # best = 'min'
+    if  True:
+        mean_data = []
+        row_names = []
+        col_names = []
+        for fn in fns_hier:
+            # if 'path-eval' in fn  or 'global' in fn:
+                # continue
+            with open(path_res_hier + f'/{fn}', 'rb') as fh:
+                results = pickle.load(fh)
+
+        with open(path_res_hier + f'/{fns_encoders[0]}', 'rb') as fh:
+            # print(fh)
+            results_encoded = pickle.load(fh)
+            
+            data_hier, tissue_names, model_names_hier = get_scores_uncalib(results, results_encoded, model_names=model_names_hier)
+
+        col_names = ['C-HMCNN', 'ConditionalSigmoid', 'CLR', 'IR']
+
+        latex_code = table_flat(data_hier, col_names, tissue_names, best, header=['Tissues'], colalign=("center",) * 5)
+
+        print("\\begin{table}[h]")
+        print("\\centering")
+        
+        print(latex_code)
+
+        print(f"\\caption{{{metric_name.upper()} of all tissues per pre-processing method}}")
+        print("\\end{table}")
     
 
     # ================================= global mean
@@ -246,7 +304,7 @@ if __name__ == "__main__":
 
     metric_name = 'F1_hier'.lower()
     best = 'max'
-    if  True:
+    if  not True:
         mean_data = []
         row_names = ['mean']
         col_names = []
