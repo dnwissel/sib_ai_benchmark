@@ -7,6 +7,7 @@ import pickle
 
 
 def subplot(data, ax, info, top=1.15, bottom=0.5):
+# def subplot(data, ax, info, top=0.15, bottom=-0.05):
     bp = ax.boxplot(data, notch=False, sym='+', vert=True, whis=1.5)
     # fig.canvas.manager.set_window_title('A Boxplot Example')
 
@@ -158,17 +159,18 @@ def load_res(path):
 
 if __name__ == "__main__":
     parent_path = Path(__file__).parents[2]
-    path_res = os.path.join(parent_path, 'results/hier')
     path_res = os.path.join(parent_path, 'results/flat')
+    path_res = os.path.join(parent_path, 'results/hier')
 
     # metric_name = 'balanced_accuracy_score'
-    metric_name = 'ece_uc'
     metric_name = 'accuracy'
+    metric_name = 'ece'
     metric_name = 'F1_SCORE_MACRO'.lower()
+    metric_name = 'f1_hier'
 
     fns = load_res(path_res)
-    fns = ['scanvi_bcm_global_local_path-eval.pkl']
     fns = ['scanvi_bcm_flat.pkl']
+    fns = ['scanvi_bcm_global_local_path-eval.pkl']
     print(fns)
 
     for fn in fns:

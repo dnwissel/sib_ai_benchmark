@@ -7,6 +7,8 @@
   - [Introduction](#introduction)
   - [Environment Setup](#environment-setup)
     - [Configuring Euler](#configuring-euler)
+  - [Run benchmark](#run-benchmark)
+  - [Results](#results)
 
 ## Introduction
 
@@ -75,3 +77,62 @@ EOF
 ```bash
 source ~/.bashrc
 ```
+
+## Run Benchmark
+
+### Download data
+
+Processed data per pre-processing method as well as the hierarchical information are stored  [here](https://drive.google.com/drive/folders/1mfgreVf5l1gshCcc10JTzUZCd2E2kMlh?usp=drive_link) on google drive. `gDrive` can be used for downloading. Data should be put under the `data-raw` folder as listed below.
+
+```
+data-raw
+│   ├── pca_
+│   └── scanvi_bcm
+...    ...
+│   └── sib_cell_type_hierarchy.tsv
+```
+
+
+### Commands to run
+
+The following commands are supposed to be run under the `sib_ai_benchmark` folder
+
+Comparing preprocessing steps on flat models. They are supposed to be run separately.
+
+```python
+python src/app.py -e scanvi_bcm -m flat
+python src/app.py -e scanvi_b -m flat
+python src/app.py -e scanvi_ -m flat
+python src/app.py -e pca_ -m flat
+```
+
+Comparison on annotation label
+```
+python src/app.py -e scanvi_bcm -m flat local global
+```
+
+ To reuse the results of flat models from the above, the commands can be simplified to avoid run flat models again
+```
+python src/app.py -e scanvi_bcm -m local global
+```
+
+Comparison on path evaluation
+```
+python src/app.py -e scanvi_bcm -m local global -p
+```
+
+Run a single model with a pre-processing method
+```
+python src/app.py -e scanvi_bcm -m NeuralNet
+```
+
+### Add new model or data
+
+A new model can be added to the folder `~/sib_ai_benchmark/src/models`. It should be wrapped with a specifical name Which can be referred for running. Please check existing model file for use case.
+
+To add a new dataset, An entry can be added to the config file in `~/sib_ai_benchmark/src/config`.The dictionary key can be referred to run the specific method  with the new dataset same as the [previous section](#commands-to-run).
+
+
+## Results
+
+The analysis of the benchmarking results is organized as a report which can be found [here](https://www.overleaf.com/read/ykcvthxxjpth#87792f).
