@@ -111,22 +111,22 @@ python src/app.py -e scanvi_ -m flat
 python src/app.py -e pca_ -m flat
 ```
 
-Comparison on annotation label
+Comparison on annotation label.
 ```
 python src/app.py -e scanvi_bcm -m flat local global
 ```
 
- To reuse the results of flat models from the above, the commands can be simplified to avoid run flat models again
+ To reuse the results of flat models from the above, the commands can be simplified to avoid run flat models again.
 ```
 python src/app.py -e scanvi_bcm -m local global
 ```
 
-Comparison on path evaluation
+Comparison on path evaluation.
 ```
 python src/app.py -e scanvi_bcm -m local global -p
 ```
 
-Run a single model or multiple models with a pre-processing method
+Run a single model or multiple models with a pre-processing method.
 ```
 python src/app.py -e scanvi_bcm -m NeuralNet
 python src/app.py -e scanvi_bcm -m NeuralNet LinearSVM
@@ -137,9 +137,9 @@ Upon completion, the app generates a pickle object and a PDF file. The pickle ob
 
 ### Add new model or data
 
-A new model can be added to the folder `~/sib_ai_benchmark/src/models`. It should be wrapped with a specifical name Which can be referred for running. Please check existing model file for use case.
+A new model can be added to one of the folders under the parent folder `~/sib_ai_benchmark/src/models`: `flatModels`, `globalModels` or `localModels` . It should be wrapped with a specific name Which can be referred for running. Please check existing model file for use case.
 
-To add a new dataset, An entry can be added to the config file in `~/sib_ai_benchmark/src/config`.The dictionary key can be referred to run the specific method  with the new dataset same as the [previous section](#commands-to-run).
+To add a new dataset, an entry can be added to the  dictionary `experiments` in `cfg.py` file in `~/sib_ai_benchmark/src/config`.The dictionary key can be referred to run the specific method with the new dataset same as the [previous section](#commands-to-run).
 
 
 ## Results
