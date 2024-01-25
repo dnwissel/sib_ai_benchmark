@@ -7,6 +7,7 @@
   - [Introduction](#introduction)
   - [Environment Setup](#environment-setup)
     - [Configuring Euler](#configuring-euler)
+  - [Benchmark architecture](#benchmark-architecture)
   - [Run benchmark](#run-benchmark)
   - [Results](#results)
 
@@ -78,6 +79,10 @@ EOF
 source ~/.bashrc
 ```
 
+## Benchmark architecture
+
+The Benchmark architecture is introduced in a report which can be found [here](https://www.overleaf.com/read/fsbbnqdqxknk#dcb46d) on Overleaf.
+
 ## Run Benchmark
 
 ### Download data
@@ -95,7 +100,7 @@ data-raw
 
 ### Commands to run
 
-The following commands are supposed to be run under the `sib_ai_benchmark` folder
+The following commands are supposed to be run under the `sib_ai_benchmark` folder.
 
 Comparing preprocessing steps on flat models. They are supposed to be run separately.
 
@@ -121,10 +126,14 @@ Comparison on path evaluation
 python src/app.py -e scanvi_bcm -m local global -p
 ```
 
-Run a single model with a pre-processing method
+Run a single model or multiple models with a pre-processing method
 ```
 python src/app.py -e scanvi_bcm -m NeuralNet
+python src/app.py -e scanvi_bcm -m NeuralNet LinearSVM
 ```
+
+Upon completion, the app generates a pickle object and a PDF file. The pickle object encapsulates a dictionary containing detailed benchmarking results, while the PDF file visualizes a selected metric through a plot. Additionally, a log file is provisioned upon app launch to enable real-time monitoring of results.
+
 
 ### Add new model or data
 
@@ -135,4 +144,4 @@ To add a new dataset, An entry can be added to the config file in `~/sib_ai_benc
 
 ## Results
 
-The analysis of the benchmarking results is organized as a report which can be found [here](https://www.overleaf.com/read/ykcvthxxjpth#87792f).
+The analysis of the benchmarking results is organized as a report which can be found [here](https://www.overleaf.com/read/fsbbnqdqxknk#dcb46d) on Overleaf.
