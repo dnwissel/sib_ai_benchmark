@@ -8,40 +8,10 @@ from sklearn.base import clone
 from inference.infer import infer_1, infer_2
 from sklearn.preprocessing import StandardScaler
 
+from models.baseModel import LocalModel
 
 
-class CascadedLRPost:
-    def __init__(
-            self,
-            encoder=None,
-            base_learner=LogisticRegression(max_iter=1000, class_weight='balanced'),
-        ):
-        self.encoder = encoder
-        self.trained_classifiers = None
-        self.base_learner = base_learner
-        self.node_indicators = None
-        self.path_eval = False
-
-    def set_predictPath(self, val):
-        self.path_eval = val
-       
-    def fit(self, X, y):
-        self._fit_base_learner(X, y)
-        return self
-    
-    def _fit_base_learner(self, X, y):
-        encoded_y = self.encoder.transform(y)
-        self.node_indicators = encoded_y.T
-        self.trained_classifiers = np.zeros(encoded_y.shape[1], dtype=object)
-        for idx, node_y in enumerate(self.node_indicators):
-            unique_node_y = np.unique(node_y)
-            if len(unique_node_y) == 1:
-                cls = unique_node_y[0]
-            else:
-                cls = clone(self.base_learner)
-                cls = cls.fit(X, node_y)
-            self.trained_classifiers[idx] = cls
-
+class CascadedLRPost(LocalModel):
 
     def _compute_marginals(self, anc_matrix, log_marginal_probas, log_probas, idx):
         log_proba_current = log_probas[idx]
@@ -89,9 +59,6 @@ class CascadedLRPost:
             marginal_probas_full.append(marginal_probas)
         return np.array(marginal_probas_full)
 
-    def set_encoder(self, encoder):
-        self.encoder = encoder
-
 
     def predict_log_proba(self, X):
         probas = []
@@ -129,7 +96,9 @@ class CascadedLRPost:
         
 params = dict(
         name='CascadedLRPost',
-        model=CascadedLRPost(),
+        model=CascadedLRPost(
+            base_learner=LogisticRegression(max_iter=1000, class_weight='balanced')
+            ),
         preprocessing_steps=[('StandardScaler', StandardScaler())]
 )
 

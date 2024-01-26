@@ -20,7 +20,7 @@ from scipy.stats import loguniform, uniform, randint
 from utilities.customizedValidSplit import CustomizedValidSplit
 from calibration.calibrate_model import CalibratedClassifier
 
-from models.baseModel.net import MLP, tuning_space
+from models.baseModel import MLP, tuning_space
 
 device = (
     "cuda"

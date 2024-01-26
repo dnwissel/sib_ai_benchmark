@@ -13,43 +13,14 @@ from models.wrapper import WrapperLocal
 from sklearn.base import clone
 from sklearn.preprocessing import StandardScaler
 
+from models.baseModel import LocalModel
+from inference.infer import infer_1, infer_2
 
-class IsotonicRegressionPost:
-    def __init__(
-            self,
-            encoder=None,
-            base_learner=LogisticRegression(max_iter=1000, class_weight='balanced'),
-            # base_learner=SVC(max_iter=10000,  C=0.02, class_weight='balanced', probability=True, gamma='auto'),
-        ):
-        self.encoder = encoder
-        self.trained_classifiers = None
-        self.base_learner = base_learner
-        self.path_eval = False
-    
-    def set_predictPath(self, val):
-        self.path_eval = val
+
+
+
+class IsotonicRegressionPost(LocalModel):
         
-    def fit(self, X, y):
-        self._fit_base_learner(X, y)
-        return self
-    
-    def _fit_base_learner(self, X, y):
-        encoded_y = self.encoder.transform(y)
-        node_indicators = encoded_y.T
-        self.trained_classifiers = np.zeros(encoded_y.shape[1], dtype=object)
-        for idx, node_y in enumerate(node_indicators):
-            unique_node_y = np.unique(node_y)
-            if len(unique_node_y) == 1:
-                cls = int(unique_node_y[0])
-            else:
-                cls = clone(self.base_learner)
-                cls = cls.fit(X, node_y)
-
-            self.trained_classifiers[idx] = cls
-
-        # print(self.trained_classifiers)
-        
-
     def run_IR(self, probas):
         """ ref to https://qpsolvers.github.io/qpsolvers/quadratic-programming.html"""
         nodes = self.encoder.G_idx.nodes()
@@ -88,14 +59,12 @@ class IsotonicRegressionPost:
                 C.append(row)
         # print(np.array(C).shape, num_nodes)
         return np.array(C)
-    
-    def set_encoder(self, encoder):
-        self.encoder = encoder
+
 
     def predict_proba(self, X, raw=False):
         probas = []
         for cls in self.trained_classifiers:
-            if isinstance(cls, int):
+            if isinstance(cls, float):
                 col = np.repeat([cls], X.shape[0])
             else:
                 col = cls.predict_proba(X)[:, 1] # proba for pos class
@@ -110,62 +79,16 @@ class IsotonicRegressionPost:
     def predict(self, X, threshold=0.5):
         probas, _ = self.predict_proba(X)
         if self.path_eval:
-            # preds = []
-            # for cls in self.trained_classifiers:
-            #     if isinstance(cls, int):
-            #         col = np.repeat([cls], X.shape[0])
-            #     else:
-            #         col = cls.predict(X) # proba for pos class
-            #     preds.append(col)
-            # return np.array(preds).T
             return probas > threshold
-        return self._inference_1(probas)
-
-    #TODO: refactor to a func
-    def _inference_1(self, probas, threshold=0.5):
-        predicted = probas > threshold
-        y_pred = np.zeros(predicted.shape[0])
-        for row_idx, row in enumerate(predicted):
-            counts = row[self.encoder.label_idx].sum()
-            if counts < 2:
-                idx = np.argmax(probas[row_idx, self.encoder.label_idx])
-                y_pred[row_idx] = self.encoder.label_idx[idx]
-            else:
-                labels = self.encoder.label_idx[row[self.encoder.label_idx].tolist()]
-                # if counts == 0:
-                #     labels = self.encoder.label_idx
-                mask = np.argsort(probas[row_idx, labels])
-                # print(mask)
-                labels_sorted = [labels[i] for i in mask]
-                preds = []
-                while len(labels_sorted) != 0:
-                    ancestors = nx.ancestors(self.encoder.G_idx, labels_sorted[0])
-                    path = [labels_sorted[0]]
-                    preds.append(labels_sorted[0])
-                    if ancestors is not None:
-                        path += list(ancestors)
-                    labels_sorted = [i for i in labels_sorted if i not in path]
-                idx = np.argmax(probas[row_idx, preds])
-                y_pred[row_idx] = preds[idx]
-        return y_pred.astype(int)
-    
-    #TODO refactor to a module
-    def _inference_2(self, probas, threshold=0.5):
-        """Select index of the last 1 on the path as the preds"""
-        predicted = probas > threshold
-        y_pred = np.zeros(predicted.shape[0])
-
-        for row_idx, row in enumerate(predicted):
-            for idx in range(len(row) - 1 , -1, -1):
-                if row[idx] and idx in self.encoder.label_idx:
-                    y_pred[row_idx] = idx
-                    break
-        return y_pred
+            
+        return infer_1(probas, self.encoder)
 
 
 params = dict(
         name='IsotonicRegressionPost',
-        model=IsotonicRegressionPost(),
+        model=IsotonicRegressionPost(
+            LogisticRegression(max_iter=1000, class_weight='balanced')
+        ),
         preprocessing_steps=[('StandardScaler', StandardScaler())]
 )
 

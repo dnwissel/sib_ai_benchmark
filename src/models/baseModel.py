@@ -4,6 +4,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 from scipy.stats import loguniform, uniform, randint
 
+from sklearn.base import clone
+import numpy as np
+
 
 class MLP(nn.Module):
     def __init__(self, dim_in, dim_out, nonlin, num_hidden_layers, batch_norm,  dor_input, dor_hidden, neuron_power, en=None):
@@ -45,6 +48,52 @@ class MLP(nn.Module):
         X = self.layers_seq(X)
         return X
 
+
+class LocalModel:
+    def __init__(
+            self,
+            base_learner,
+            encoder=None,
+        ):
+        self.encoder = encoder
+        self.trained_classifiers = None
+        self.base_learner = base_learner
+        self.node_indicators = None
+        self.path_eval = False
+
+    def set_predictPath(self, val):
+        self.path_eval = val
+       
+    def fit(self, X, y):
+        self._fit_base_learner(X, y)
+        return self
+    
+    def _fit_base_learner(self, X, y):
+        encoded_y = self.encoder.transform(y)
+        self.node_indicators = encoded_y.T
+        self.trained_classifiers = np.zeros(encoded_y.shape[1], dtype=object)
+        for idx, node_y in enumerate(self.node_indicators):
+            unique_node_y = np.unique(node_y)
+            if len(unique_node_y) == 1:
+                cls = unique_node_y[0]
+            else:
+                cls = clone(self.base_learner)
+                cls = cls.fit(X, node_y)
+            self.trained_classifiers[idx] = cls
+
+
+    def set_encoder(self, encoder):
+        self.encoder = encoder
+
+
+    def predict(self, X, threshold=0.5):
+        pass
+
+
+    def predict_proba(self, X):
+        pass
+
+ 
 
 tuning_space={
                 'lr': loguniform(1e-5, 1e-3),

@@ -21,7 +21,7 @@ from calibration.calibrate_model import CalibratedClassifier
 from loss.hier import MCLoss, get_constr_out
 from inference import infer
 from utilities.customizedValidSplit import CustomizedValidSplit
-from models.baseModel.net import MLP, tuning_space
+from models.baseModel import MLP, tuning_space
 
 
 class NeuralNetClassifierHier_1(NeuralNetClassifier):

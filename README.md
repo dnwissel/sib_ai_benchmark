@@ -1,4 +1,4 @@
-# Celltype Classification Benchmark
+# Celltype Classification Benchmark with both Hierarchical and Non-hierarchical Labels
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@
 
 ## Introduction
 
- This project is part of the *`Pilot implementation of annotation of single-cell RNA-seq data guided by AI`* project from the Swiss Institute of Bioinformatics (SIB), which aims at developing and implementing a machine learning approach to guide cell type classification for large datasets on *ASAP (Automated Single-cell Analysis Portal)* and *Bgee (a gene expression database of SIB)* resources. The initial focus will be on the datasets from Drosophila melanogaster species, and later we will consider including additional datasets and large-scale atlas datasets.
+ This project is part of the *`Pilot implementation of annotation of single-cell RNA-seq data guided by AI`* project from the Swiss Institute of Bioinformatics (SIB), which aims at developing and implementing a machine learning approach to guide cell type classification for large datasets on *ASAP (Automated Single-cell Analysis Portal)* and *Bgee (a gene expression database of SIB)* resources. It aims at benchmarking  both single label and path (multi-label) annotation pipelines for the datasets: Bgee and ASAP resources from scRNA-seq. We compared four different preprocessing methods enclosing covariants removal and dimension reduction. Then we calibrated and compared five flat models, two local models and  two global models. A report with detailed explanation can be found [here](https://www.overleaf.com/read/fsbbnqdqxknk#dcb46d) on Overleaf.
 
 ## Environment Setup
 
