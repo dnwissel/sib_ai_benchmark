@@ -1,16 +1,14 @@
 import numpy as np
-
+from scipy import sparse
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+
+from inference.infer import infer_1
+from models.baseModel import LocalModel
+from models.wrapper import WrapperLocal
 # from sklearn.isotonic import isotonic_regression
 # from quadprog import solve_qp
 from qpsolvers import solve_qp
-from scipy import sparse
-
-from models.wrapper import WrapperLocal
-from sklearn.preprocessing import StandardScaler
-
-from models.baseModel import LocalModel
-from inference.infer import infer_1
 
 
 class IsotonicRegressionPost(LocalModel):

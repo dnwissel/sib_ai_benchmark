@@ -1,18 +1,15 @@
 import torch
 import torch.nn.functional as F
-
 from sklearn.preprocessing import StandardScaler
 
+from calibration.calibrate_model import CalibratedClassifier
 from config import cfg
-
+from inference import infer
+from loss.hier import MCLoss, get_constr_out
+from models.baseModel import MLP, tuning_space
 from models.wrapper import WrapperCHMC
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
-
-from calibration.calibrate_model import CalibratedClassifier
-from loss.hier import MCLoss, get_constr_out
-from inference import infer
-from models.baseModel import MLP, tuning_space
 
 
 class NeuralNetClassifierHier_1(NeuralNetClassifier):

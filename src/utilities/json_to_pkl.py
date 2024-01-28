@@ -1,8 +1,7 @@
 import json
-import pickle
 import os
+import pickle
 from pathlib import Path
-
 
 fn = 'file_name'
 res_dir = os.path.join(Path(__file__).parents[2], 'results')

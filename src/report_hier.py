@@ -1,12 +1,12 @@
-from tabulate import tabulate
-import numpy as np
-from pathlib import Path
 import os
 import pickle
 from functools import partial
+from pathlib import Path
+
+import numpy as np
+from tabulate import tabulate
 
 from metrics.hier import f1_hier_report
-import numpy as np
 
 
 def highlight(row, type='max'):

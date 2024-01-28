@@ -1,9 +1,10 @@
+import os
+import pickle
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
-from pathlib import Path
-import os
-import pickle
 
 
 def subplot(data, ax, info, top=1.15, bottom=0.5):

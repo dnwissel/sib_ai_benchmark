@@ -1,16 +1,13 @@
 import torch
+from sklearn.preprocessing import StandardScaler
 from torch import nn
 
-from sklearn.preprocessing import StandardScaler
-
+from calibration.calibrate_model import CalibratedClassifier
 from config import cfg
-
+from models.baseModel import MLP, tuning_space
 from models.wrapper import WrapperNN
 from skorch import NeuralNetClassifier
 from skorch.callbacks import EarlyStopping
-from calibration.calibrate_model import CalibratedClassifier
-
-from models.baseModel import MLP, tuning_space
 
 device = (
     "cuda"

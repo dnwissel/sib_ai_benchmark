@@ -1,11 +1,12 @@
-from scipy import sparse
-from qpsolvers import solve_qp
-import matplotlib.pyplot as plt
-import numpy as np
-
 from functools import partial
-import torch
+
+import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
+import torch
+from scipy import sparse
+
+from qpsolvers import solve_qp
 
 
 def run_IR(probas, encoder):

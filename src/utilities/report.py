@@ -1,10 +1,11 @@
-from tabulate import tabulate
-import numpy as np
-from pathlib import Path
 import os
 import pickle
 from functools import partial
+from pathlib import Path
+
+import numpy as np
 from sklearn.metrics import f1_score
+from tabulate import tabulate
 
 
 def highlight(row, type='max'):

@@ -1,6 +1,7 @@
-from hiclass.metrics import f1, recall, precision
 import numpy as np
 import torch
+
+from hiclass.metrics import f1, precision, recall
 
 
 def f1_hier(y_true, y_pred, en):

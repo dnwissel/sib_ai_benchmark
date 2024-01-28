@@ -1,9 +1,8 @@
-from torch import nn
+import numpy as np
 import torch.optim as optim
 from scipy.stats import loguniform, uniform
-
 from sklearn.base import clone
-import numpy as np
+from torch import nn
 
 
 class MLP(nn.Module):

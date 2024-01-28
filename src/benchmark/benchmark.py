@@ -1,21 +1,21 @@
-from sklearn.model_selection import LeaveOneGroupOut, StratifiedGroupKFold, StratifiedKFold
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-
-import numpy as np
-
+import os
 import pickle
 from functools import partial
-import os
 
+import numpy as np
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import (GridSearchCV, LeaveOneGroupOut,
+                                     RandomizedSearchCV, StratifiedGroupKFold,
+                                     StratifiedKFold)
+
+from config import cfg
+from metrics.hier import f1_hier, precision_hier, recall_hier
 from utilities.logger import Logger
 from utilities.plot import plot
 
-from config import cfg
 # import models
 
-from sklearn.metrics import make_scorer
 
-from metrics.hier import f1_hier, precision_hier, recall_hier
 # TODO: refactor to dataloader module
 # TODO: Enable pass dataset matrix  to app
 # TODO: check if train and test have the sampe y.nunique()

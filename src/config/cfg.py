@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
-from utilities import dataLoader as dl
-from utilities.toDense import ToDense
+
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import StandardScaler
+
+from utilities import dataLoader as dl
+from utilities.toDense import ToDense
 
 # debug = False
 debug = True

@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 
-
 if torch.cuda.is_available():
     device = torch.device('cuda')
 else:

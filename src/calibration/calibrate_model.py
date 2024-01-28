@@ -1,10 +1,9 @@
-from .methods import TemperatureScaling, VectorScaling
-
-from sklearn.base import BaseEstimator, ClassifierMixin
-import torch
-from torch import optim
 import pandas as pd
+import torch
+from sklearn.base import BaseEstimator, ClassifierMixin
+from torch import optim
 
+from .methods import TemperatureScaling, VectorScaling
 
 if torch.cuda.is_available():
     device = torch.device('cuda')

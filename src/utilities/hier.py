@@ -1,7 +1,8 @@
 import itertools
+
+import networkx as nx
 import numpy as np
 import torch
-import networkx as nx
 
 
 class Encoder:

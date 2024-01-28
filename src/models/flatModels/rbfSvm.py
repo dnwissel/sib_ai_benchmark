@@ -1,12 +1,10 @@
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
 from scipy.stats import loguniform
-
-
-from models.wrapper import WrapperSVM
-from calibration.calibrate_model import CalibratedClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 from torch import nn
 
+from calibration.calibrate_model import CalibratedClassifier
+from models.wrapper import WrapperSVM
 
 params = dict(
     name='RBFSVM',

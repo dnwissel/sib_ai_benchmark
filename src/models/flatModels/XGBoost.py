@@ -1,11 +1,10 @@
-from sklearn.preprocessing import StandardScaler
 from scipy.stats import loguniform
 from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.preprocessing import StandardScaler
 from torch import nn
 
-from models.wrapper import WrapperXGB
 from calibration.calibrate_model import CalibratedClassifier
-
+from models.wrapper import WrapperXGB
 
 params = dict(
     name='XGBoost',

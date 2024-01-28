@@ -1,11 +1,10 @@
 import numpy as np
-
 from sklearn.linear_model import LogisticRegression
-from models.wrapper import WrapperLocal
-from inference.infer import infer_1
 from sklearn.preprocessing import StandardScaler
 
+from inference.infer import infer_1
 from models.baseModel import LocalModel
+from models.wrapper import WrapperLocal
 
 
 class CascadedLRPost(LocalModel):

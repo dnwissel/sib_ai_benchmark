@@ -1,8 +1,8 @@
 # Test
 import os
+from pathlib import Path
 
 from utilities import dataLoader as dl
-from pathlib import Path
 
 parent_path = Path(__file__).parents[2]
 

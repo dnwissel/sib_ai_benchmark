@@ -1,7 +1,6 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
-
 from models.wrapper import Wrapper
 
 params = dict(

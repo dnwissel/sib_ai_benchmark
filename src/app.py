@@ -1,16 +1,14 @@
 import argparse
-from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
-
 import random
-
-
 from functools import partial
 
-from utilities import dataLoader as dl
-from config import cfg
+from sklearn.metrics import (accuracy_score, balanced_accuracy_score, f1_score,
+                             make_scorer)
+from sklearn.preprocessing import MinMaxScaler
 
 from benchmark.benchmark import Benchmark  # TODO Better importing schedule
-from sklearn.preprocessing import MinMaxScaler
+from config import cfg
+from utilities import dataLoader as dl
 
 # TODO: Enable pass dataset matrix  to app
 # TODO: check if train and test have the sampe y.nunique()

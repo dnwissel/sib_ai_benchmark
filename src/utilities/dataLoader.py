@@ -1,10 +1,11 @@
 import importlib
 import os
 import pkgutil
+
 import anndata
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
 
 from models import flatModels, globalModels, localModels
 
