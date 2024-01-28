@@ -1,7 +1,7 @@
 from hiclass.metrics import f1, recall, precision
-from sklearn.metrics import average_precision_score
 import numpy as np
 import torch
+
 
 def f1_hier(y_true, y_pred, en):
     y_true_encoded = en.transform(y_true)
@@ -13,6 +13,7 @@ def f1_hier(y_true, y_pred, en):
     score = f1(y_true_labels, y_pred_labels)
     return score
 
+
 def recall_hier(y_true, y_pred, en):
     y_true_encoded = en.transform(y_true)
     # print(y_true_encoded, y_pred)
@@ -22,6 +23,7 @@ def recall_hier(y_true, y_pred, en):
     score = recall(y_true_labels, y_pred_labels)
     return score
 
+
 def precision_hier(y_true, y_pred, en):
     y_true_encoded = en.transform(y_true)
     # print(y_true_encoded, y_pred)
@@ -30,6 +32,7 @@ def precision_hier(y_true, y_pred, en):
     y_pred_labels = to_labels(y_pred[:, en.idx_to_eval])
     score = precision(y_true_labels, y_pred_labels)
     return score
+
 
 def f1_hier_report(y_true, y_pred, idx_to_eval):
     # y_true_encoded = en.transform(y_true)

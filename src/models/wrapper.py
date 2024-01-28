@@ -1,10 +1,9 @@
-from functools import partial
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from config import cfg
 from utilities.hier import Encoder
 from scipy.special import softmax
-from utilities import dataLoader  as dl
+from utilities import dataLoader as dl
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -18,13 +17,13 @@ from sklearn.utils.class_weight import compute_class_weight
 
 class Wrapper:
     def __init__(
-        self, 
-        model, 
-        name, 
-        tuning_space=None, 
-        preprocessing_steps=None, 
-        preprocessing_params=None, 
-        calibrater=None, 
+        self,
+        model,
+        name,
+        tuning_space=None,
+        preprocessing_steps=None,
+        preprocessing_params=None,
+        calibrater=None,
         mute=False
     ):
 
@@ -51,7 +50,7 @@ class Wrapper:
 
     def set_predictPath(self, val):
         self.path_eval = val
-        
+
     def set_gGlobal(self, g, roots):
         self.g_global = g
         self.roots_label = roots
@@ -75,8 +74,9 @@ class Wrapper:
         if not self.preprocessing_steps:
             pipeline = Pipeline([(self.name, self.model)])
         else:
-            pipeline = Pipeline(self.preprocessing_steps + [(self.name, self.model)])
-            
+            pipeline = Pipeline(self.preprocessing_steps +
+                                [(self.name, self.model)])
+
             if self.preprocessing_params:
                 param_grid.update(self.preprocessing_params)
         return pipeline, param_grid
@@ -86,39 +86,42 @@ class Wrapper:
         pipeline, param_grid = self.get_pipeline()
 
         # Encode labels
-        le = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, dtype=int)
-        y_train = le.fit_transform(train_y_label.to_numpy().reshape(-1, 1)).flatten()
-        y_train, y_test = y_train, le.transform(test_y_label.to_numpy().reshape(-1, 1)).flatten()
-        
+        le = OrdinalEncoder(handle_unknown='use_encoded_value',
+                            unknown_value=-1, dtype=int)
+        y_train = le.fit_transform(
+            train_y_label.to_numpy().reshape(-1, 1)).flatten()
+        y_train, y_test = y_train, le.transform(
+            test_y_label.to_numpy().reshape(-1, 1)).flatten()
+
         # print(y_test)
         return pipeline, param_grid, y_train, y_test
 
     def __validate_input(self, model=None):
         pass
 
-        #TODO: Validates fit and predict methods in model
+        # TODO: Validates fit and predict methods in model
 
     def ece(self, y_test, y_test_pred,  probas):
         # print(y_test, y_test_pred, probas)
         ece = calibration_error(y_test, y_test_pred, probas)
         return ece
-    
+
     def fit_calibrater(self, X, y):
         if self.calibrater is not None:
-            self.calibrater.set_model(self) 
+            self.calibrater.set_model(self)
             if hasattr(self.calibrater.criterion, 'set_encoder'):
                 self.calibrater.criterion.set_encoder(self.encoder)
-                        # y = self.encoder.transform(y)
+                # y = self.encoder.transform(y)
 
             # y = self.encoder.transform(y)
             self.calibrater = self.calibrater.fit(X, y)
-    
+
     def predict_proba(self, X):
         logits = self.get_logits(X)
 
         if logits is None:
             res = self.model_fitted.predict_proba(X)
-            
+
             if isinstance(res, tuple):
                 # For self-defined models
                 probas_uncalib_all = res[0]
@@ -127,7 +130,7 @@ class Wrapper:
                 probas_uncalib_all = res
         else:
             probas_uncalib_all = self.nonlinear(logits)
-        
+
         probas_calib = None
         probas_uncalib = probas_uncalib_all
 
@@ -161,7 +164,7 @@ class Wrapper:
             logits = self.calibrater.get_logits(X)
             probas_calib_all = self.nonlinear(logits)
             # print(probas_calib_all[1, :])
-                
+
             if self.path_eval:
                 preds_calib = probas_calib_all > threshold
             else:
@@ -187,7 +190,7 @@ class Wrapper:
         if torch.is_tensor(logits):
             logits = logits.detach().numpy()
         return softmax(logits, axis=-1)
-        
+
     def get_logits(self, X):
         """
         If a classifier need to be calibrated, this method must be implemented
@@ -199,7 +202,7 @@ class WrapperHier(Wrapper):
     def init_model(self, X, train_y_label, test_y_label):
         # Define pipeline and param_grid
         pipeline, param_grid = self.get_pipeline()
-        
+
         # Set Loss params
         # Ecode y
         self.set_gGlobal(*dl.load_full_hier(cfg.path_hier))
@@ -221,11 +224,11 @@ class WrapperHier(Wrapper):
             num_feature = X.shape[1]
 
         self.model.set_params(
-                module__en=en,
-                module__dim_in=num_feature,
-                module__dim_out=len(en.G_idx.nodes()), 
-                criterion__encoder=en
-        ) 
+            module__en=en,
+            module__dim_in=num_feature,
+            module__dim_out=len(en.G_idx.nodes()),
+            criterion__encoder=en
+        )
         return pipeline, param_grid, y_train, y_test
 
     def ece_path(self, y_true_encoded, y_test_pred,  probas):
@@ -243,12 +246,13 @@ class WrapperHier(Wrapper):
             y_true_col = y_true_encoded[:, col_idx]
             proba_col = probas[:, col_idx]
             mask = (y_true_col == 0)
-            idxs_0 =idxs[mask]
+            idxs_0 = idxs[mask]
             # print(idxs_0)
 
             proba_col[idxs_0] = 1 - proba_col[idxs_0]
-            ece_col = calibration_error(y_true_col, y_test_pred[:, col_idx], proba_col)
-            
+            ece_col = calibration_error(
+                y_true_col, y_test_pred[:, col_idx], proba_col)
+
             sum += ece_col
 
         num_col -= len(self.encoder.roots_idx)
@@ -258,7 +262,7 @@ class WrapperHier(Wrapper):
     def get_logits(self, X):
         _, logits = self.model_fitted.predict_proba(X)
         return logits
-    
+
     def nonlinear(self, logits):
         """
         If a classifier need to be calibrated, this method must be implemented
@@ -267,7 +271,7 @@ class WrapperHier(Wrapper):
         if torch.is_tensor(logits):
             logits = logits.detach().numpy()
         return F.sigmoid(logits)
-        
+
 
 class WrapperSVM(Wrapper):
     def get_logits(self, X):
@@ -275,7 +279,9 @@ class WrapperSVM(Wrapper):
         if confidence.ndim == 1 or confidence.shape[1] == 1:
             # print(confidence.shape)
             confidence = np.reshape(confidence, (-1, 1))
-            confidence = np.concatenate((-1 * confidence, 1 * confidence), axis=1) # label 1 considered as positive, 
+            # label 1 considered as positive,
+            confidence = np.concatenate(
+                (-1 * confidence, 1 * confidence), axis=1)
         return confidence
 
 
@@ -298,8 +304,10 @@ class WrapperNN(Wrapper):
             num_feature = X.shape[1]
 
         # Encode labels
-        le = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1, dtype=int)
-        y_train = le.fit_transform(train_y_label.to_numpy().reshape(-1, 1)).flatten()
+        le = OrdinalEncoder(handle_unknown='use_encoded_value',
+                            unknown_value=-1, dtype=int)
+        y_train = le.fit_transform(
+            train_y_label.to_numpy().reshape(-1, 1)).flatten()
         y_test = le.transform(test_y_label.to_numpy().reshape(-1, 1)).flatten()
 
         class_weight = compute_class_weight(
@@ -310,18 +318,19 @@ class WrapperNN(Wrapper):
         class_weight = torch.from_numpy(class_weight)
         class_weight = class_weight.float()
         self.model.set_params(
-            module__dim_in=num_feature, 
+            module__dim_in=num_feature,
             module__dim_out=num_class,
             criterion__weight=class_weight
         )
         return pipeline, param_grid, y_train, y_test
-    
+
     def get_logits(self, X):
         pl_pp = Pipeline(self.model_fitted.best_estimator_.steps[:-1])
-        net = self.model_fitted.best_estimator_.steps[-1][1] #TODO: make a copy
+        # TODO: make a copy
+        net = self.model_fitted.best_estimator_.steps[-1][1]
         logits = net.forward(pl_pp.transform(X)).to('cpu').data
         return logits
-  
+
 
 class WrapperCHMC(WrapperHier):
     def nonlinear(self, logits):
@@ -333,7 +342,7 @@ class WrapperCHMC(WrapperHier):
         preds = infer.infer_1(probas, self.encoder)
         return preds
 
-    #TODO: not precise
+    # TODO: not precise
     def predict_label_proba(self, probas_all):
         preds = infer.infer_1(probas_all, self.encoder)
         probas = []
@@ -359,6 +368,7 @@ class WrapperCS(WrapperHier):
         _, probas = infer.infer_cs(probas_all, self.encoder)
         return probas
 
+
 class WrapperLocal(WrapperHier):
     def init_model(self, X, train_y_label, test_y_label):
         # Define pipeline and param_grid
@@ -376,7 +386,7 @@ class WrapperLocal(WrapperHier):
         for lable in test_y_label:
             y_test.append(en.node_map.get(lable, -1))
         y_test = np.array(y_test)
-        
+
         self.model.set_encoder(en)
         return pipeline, param_grid, y_train, y_test
 
@@ -384,7 +394,7 @@ class WrapperLocal(WrapperHier):
         preds = infer.infer_1(probas, self.encoder)
         return preds
 
-    #TODO: not precise
+    # TODO: not precise
     def predict_label_proba(self, probas_all):
         preds = infer.infer_1(probas_all, self.encoder)
         probas = []

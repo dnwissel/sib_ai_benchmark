@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def calibration_error(y_true, y_pred, y_prob, sample_weight=None, norm='l1',
                       n_bins=10, strategy='uniform', reduce_bias=True):
     """Compute calibration error of a multi-class classifier, which is adapted from code for a binary case in sklearn 
@@ -44,9 +45,8 @@ def calibration_error(y_true, y_pred, y_prob, sample_weight=None, norm='l1',
 
     Examples
     --------
-   
-    """
 
+    """
 
     # y_true = column_or_1d(y_true)
     # y_prob = column_or_1d(y_prob)
@@ -67,8 +67,9 @@ def calibration_error(y_true, y_pred, y_prob, sample_weight=None, norm='l1',
     #     raise ValueError("pos_label=%r is not a valid label: "
     #                      "%r" % (pos_label, labels))
 
-    y_true, y_pred, y_prob = np.array(y_true), np.array(y_pred), np.array(y_prob)
-    y_true = np.array(y_true == y_pred, int) # changed for multiclass
+    y_true, y_pred, y_prob = np.array(
+        y_true), np.array(y_pred), np.array(y_prob)
+    y_true = np.array(y_true == y_pred, int)  # changed for multiclass
 
     norm_options = ('l1', 'l2', 'max')
     if norm not in norm_options:
@@ -137,18 +138,17 @@ def calibration_error(y_true, y_pred, y_prob, sample_weight=None, norm='l1',
     return loss
 
 
-
 if __name__ == "__main__":
     # Test case 1:
     y_true = np.array([0, 0, 0, 1] + [0, 1, 1, 1])
     y_pred = np.array([0, 3, 3, 0] + [3, 1, 1, 1])
     y_prob = np.array([0.25, 0.25, 0.25, 0.25] + [0.75, 0.75, 0.75, 0.75])
     ece = calibration_error(y_true, y_pred, y_prob, n_bins=2)
-    assert(ece == 0.0)
+    assert (ece == 0.0)
 
-    # Test case 2: 
+    # Test case 2:
     y_true = np.array([0, 0, 0, 1] + [0, 1, 1, 1])
     y_pred = np.array([0, 0, 3, 0] + [3, 0, 1, 1])
     y_prob = np.array([0.25, 0.25, 0.25, 0.25] + [0.75, 0.75, 0.75, 0.75])
     ece = calibration_error(y_true, y_pred, y_prob, n_bins=2)
-    assert(ece == (4 * (0.5 - 0.25) + 4 * (0.75 - 0.5)) / 8)
+    assert (ece == (4 * (0.5 - 0.25) + 4 * (0.75 - 0.5)) / 8)

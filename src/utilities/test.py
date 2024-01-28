@@ -1,13 +1,7 @@
 # Test
 import os
-import pkgutil
-import importlib
-from utilities.logger import Logger
-import logging
-import json
 
-from utilities import dataLoader  as dl
-from config import cfg
+from utilities import dataLoader as dl
 from pathlib import Path
 
 parent_path = Path(__file__).parents[2]
@@ -20,4 +14,4 @@ for k, v in data.items():
     y = set(v[0][0][1].unique()) | set(v[0][1][1].unique())
     diff = y - G.nodes()
     if len(diff) > 0:
-        print(k ,diff)
+        print(k, diff)

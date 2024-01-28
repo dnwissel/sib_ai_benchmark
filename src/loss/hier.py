@@ -1,5 +1,5 @@
 import numpy as np
-from torch import nn, optim
+from torch import nn
 from torch.nn import functional as F
 import torch
 
@@ -10,6 +10,7 @@ device = (
     if torch.backends.mps.is_available()
     else "cpu"
 )
+
 
 class MaskBCE(nn.Module):
     def __init__(self, encoder=None):
@@ -26,7 +27,7 @@ class MaskBCE(nn.Module):
         # train_output = (1-target)*constr_output.double() + target*train_output
         train_output = output
 
-        #Mask Loss
+        # Mask Loss
         loss_mask = self.encoder.get_lossMask()
         loss_mask = loss_mask.to(device)
         lm_batch = loss_mask[target]
@@ -41,17 +42,20 @@ class MaskBCE(nn.Module):
         # target = np.where(lm_batch, target, 1)
         # target = torch.from_numpy(target).to(device)
 
-        loss = self.criterion(train_output[:,self.encoder.idx_to_eval], target[:,self.encoder.idx_to_eval], reduction='none')
-        loss = lm_batch[:,self.encoder.idx_to_eval] * loss
+        loss = self.criterion(train_output[:, self.encoder.idx_to_eval],
+                              target[:, self.encoder.idx_to_eval], reduction='none')
+        loss = lm_batch[:, self.encoder.idx_to_eval] * loss
         return loss.sum()
 
     def set_encoder(self, encoder):
         self.encoder = encoder
 
+
 class MCLoss(nn.Module):
     """
     input should be logits.
     """
+
     def __init__(self, encoder=None):
         super().__init__()
         self.criterion = nn.BCELoss()
@@ -69,19 +73,21 @@ class MCLoss(nn.Module):
         train_output = get_constr_out(train_output, R)
         train_output = (1-target)*constr_output.double() + target*train_output
 
-        #MCLoss
+        # MCLoss
         # print(train_output[:,self.encoder.idx_to_eval ], target[:,self.encoder.idx_to_eval])
         # mask = train_output < 0
         # train_output[mask] = 0
-        loss = self.criterion(train_output[:,self.encoder.idx_to_eval ], target[:,self.encoder.idx_to_eval])
+        loss = self.criterion(
+            train_output[:, self.encoder.idx_to_eval], target[:, self.encoder.idx_to_eval])
         return loss
 
     def set_encoder(self, encoder):
         self.encoder = encoder
 
+
 def get_constr_out(x, R):
     """ Given the output of the neural network x returns the output of MCM given the hierarchy constraint expressed in the matrix R """
-    
+
     # x = x.to(device)
     # R = R.to(device)
 
@@ -92,9 +98,9 @@ def get_constr_out(x, R):
     x = torch.sigmoid(x)
     c_out = x.double()
     c_out = c_out.unsqueeze(1)
-    c_out = c_out.expand(len(x),R.shape[1], R.shape[1])
-    R_batch = R.expand(len(x),R.shape[1], R.shape[1])
-    final_out, _ = torch.max(R_batch*c_out.double(), dim = 2)
+    c_out = c_out.expand(len(x), R.shape[1], R.shape[1])
+    R_batch = R.expand(len(x), R.shape[1], R.shape[1])
+    final_out, _ = torch.max(R_batch*c_out.double(), dim=2)
     # put back on GPU
     final_out = final_out.to(device)
 

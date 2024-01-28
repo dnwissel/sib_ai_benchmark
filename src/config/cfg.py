@@ -1,14 +1,14 @@
 import os
 from pathlib import Path
-from utilities import dataLoader  as dl
+from utilities import dataLoader as dl
 from utilities.toDense import ToDense
-from sklearn.decomposition import PCA, TruncatedSVD
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.decomposition import TruncatedSVD
+from sklearn.preprocessing import StandardScaler
 
 # debug = False
 debug = True
 
-#TODO: put embeddings under data/
+# TODO: put embeddings under data/
 parent_path = Path(__file__).parents[2]
 path_tissue_data = os.path.join(parent_path, "data-raw/raw_data_per_tissue")
 
@@ -36,17 +36,17 @@ experiments = {
         'ppSteps': [('DimensionReduction', TruncatedSVD(n_components=n_dim)), ('StandardScaler', StandardScaler(with_mean=True))],
         'ppParams': None,
     },
-    
+
     # Only do filtering
     'pf_': {
         'data_path': path_pf_ if not debug else path_debug,
         'dataloader': dl.load_tissue_raw,
         'is_pre_splits': False,
         'model_type': 'flat',
-        'ppSteps': [('ToDense', ToDense()),('StandardScaler', StandardScaler(with_mean=True))],
+        'ppSteps': [('ToDense', ToDense()), ('StandardScaler', StandardScaler(with_mean=True))],
         'ppParams': None,
     },
-    
+
     'scanvi_bcm': {
         'data_path': path_scanvi_bcm if not debug else path_debug,
         # 'data_path': path_debug,

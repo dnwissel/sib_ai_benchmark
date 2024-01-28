@@ -1,6 +1,5 @@
 import torch
-from torch import nn, optim
-from torch.nn import functional as F
+from torch import nn
 
 
 if torch.cuda.is_available():
@@ -19,8 +18,8 @@ class VectorScaling(nn.Module):
 
     def forward(self, logits):
         logits = logits * self.W + self.b
-        # logits = logits * self.W 
-        # logits = logits / self.W 
+        # logits = logits * self.W
+        # logits = logits / self.W
         # logits = torch.matmul(logits, self.W)
         # return F.softmax(logits, dim=-1)
         # print(self.W)
@@ -31,7 +30,8 @@ class MatrixScaling(nn.Module):
     def __init__(self, logits_len):
         super().__init__()
         self.layer = nn.Linear(logits_len, logits_len)
-        self.params = [self.layer.state_dict()['weight'], self.layer.state_dict()['bias']]
+        self.params = [self.layer.state_dict()['weight'],
+                       self.layer.state_dict()['bias']]
 
     def forward(self, logits):
         return self.layer(logits)
@@ -49,6 +49,5 @@ class TemperatureScaling(nn.Module):
         # self.temperature = min_temp
         # self.params = [self.temperature]
 
-        return logits / self.temperature # logSoftmax in CrossEntropyLoss()
+        return logits / self.temperature  # logSoftmax in CrossEntropyLoss()
         # return F.softmax(/logits / self.temperature, dim=-1)
-

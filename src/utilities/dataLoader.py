@@ -21,15 +21,16 @@ def load_pre_splits(path, batch_min=3, is_row_id=True):
 
     splits_data = {}
     for k, v in splits_fn.items():
-        v = sorted(v, key = lambda x : (x[x.rindex('_') + 1:], x[x.rindex('_') - 1]))
-        splits_fn[k] = [(v[i],v[i + 1]) for i in range(0,len(v), 2)]
+        v = sorted(v, key=lambda x: (
+            x[x.rindex('_') + 1:], x[x.rindex('_') - 1]))
+        splits_fn[k] = [(v[i], v[i + 1]) for i in range(0, len(v), 2)]
 
         ann_train = anndata.read_h5ad(path + '/' + v[0])
         groups_train = ann_train.obs['batch_id']
         if groups_train.nunique() < batch_min - 1:
             continue
 
-        for i in range(0,len(v), 2):
+        for i in range(0, len(v), 2):
             ann_train = anndata.read_h5ad(path + '/' + v[i])
             ann_test = anndata.read_h5ad(path + '/' + v[i + 1])
             # print(ann_train.obs.columns)
@@ -37,13 +38,13 @@ def load_pre_splits(path, batch_min=3, is_row_id=True):
                 # print(ann_train.obs['y'].shape)
                 # print(ann_train.obs['batch_id'].shape)
                 splits_data.setdefault(k, []).append(
-                    [(ann_train.X, ann_train.obs['y'], ann_train.obs['batch_id'], ann_train.obs['id']), 
-                    (ann_test.X, ann_test.obs['y'], ann_test.obs['batch_id'], ann_test.obs['id'])]
+                    [(ann_train.X, ann_train.obs['y'], ann_train.obs['batch_id'], ann_train.obs['id']),
+                     (ann_test.X, ann_test.obs['y'], ann_test.obs['batch_id'], ann_test.obs['id'])]
                 )
             else:
                 splits_data.setdefault(k, []).append(
-                    [(ann_train.X, ann_train.obs['y'], ann_train.obs['batch_id']), 
-                    (ann_test.X, ann_test.obs['y'], ann_test.obs['batch_id'])]
+                    [(ann_train.X, ann_train.obs['y'], ann_train.obs['batch_id']),
+                     (ann_test.X, ann_test.obs['y'], ann_test.obs['batch_id'])]
                 )
 
     return splits_data
@@ -65,7 +66,8 @@ def load_tissue_raw(path, batch_min=3, is_row_id=True):
         if groups.nunique() < batch_min:
             continue
         if is_row_id:
-            splits_data[k] = (adata.X, adata.obs['y'], adata.obs['batch_id'], adata.obs['id'])
+            splits_data[k] = (adata.X, adata.obs['y'],
+                              adata.obs['batch_id'], adata.obs['id'])
         else:
             splits_data[k] = (adata.X, adata.obs['y'], adata.obs['batch_id'])
     return splits_data
@@ -78,7 +80,7 @@ def load_raw_data(path):
     mask = ann.obs['cellTypeId'] != 'unannotated'
     X = ann.X[mask][:100]
     y = ann.obs[mask]['cellTypeId'].cat.codes[:100]
-    
+
     groups = None
     if 'batch' in ann.obs.columns:
         groups = ann.obs['batch']
@@ -91,24 +93,27 @@ def load_raw_data(path):
 def load_models(selected_models='all', deselected_models=None):
     classifiers = []
     for module_info in pkgutil.iter_modules(flatModels.__path__):
-        module = importlib.import_module('models.flatModels.' + module_info.name)
+        module = importlib.import_module(
+            'models.flatModels.' + module_info.name)
         if deselected_models is not None and module.wrapper.name in deselected_models or module.wrapper.mute:
             continue
-        if 'all' in selected_models or 'flat' in selected_models  or module.wrapper.name in selected_models:
+        if 'all' in selected_models or 'flat' in selected_models or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
 
     for module_info in pkgutil.iter_modules(globalModels.__path__):
-        module = importlib.import_module('models.globalModels.' + module_info.name)
+        module = importlib.import_module(
+            'models.globalModels.' + module_info.name)
         if deselected_models is not None and module.wrapper.name in deselected_models or module.wrapper.mute:
             continue
-        if 'all' in selected_models or 'global' in selected_models  or module.wrapper.name in selected_models:
+        if 'all' in selected_models or 'global' in selected_models or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
 
     for module_info in pkgutil.iter_modules(localModels.__path__):
-        module = importlib.import_module('models.localModels.' + module_info.name)
+        module = importlib.import_module(
+            'models.localModels.' + module_info.name)
         if deselected_models is not None and module.wrapper.name in deselected_models or module.wrapper.mute:
             continue
-        if 'all' in selected_models or 'local' in selected_models  or module.wrapper.name in selected_models:
+        if 'all' in selected_models or 'local' in selected_models or module.wrapper.name in selected_models:
             classifiers.append(module.wrapper)
     # logger.write(
     #     f'{len(classifiers)} model(s) loaded: {", ".join(c.name for c in classifiers )}', msg_type='subtitle'
@@ -131,4 +136,3 @@ def load_full_hier(path):
         G.add_edge('root', 'FBbt:00005073')
     # print(roots_label)
     return G, roots_label
-

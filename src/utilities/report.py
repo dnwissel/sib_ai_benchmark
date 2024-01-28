@@ -1,12 +1,10 @@
 from tabulate import tabulate
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Polygon
 from pathlib import Path
 import os
 import pickle
 from functools import partial
-from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
+from sklearn.metrics import f1_score
 
 
 def highlight(row, type='max'):
@@ -40,9 +38,9 @@ def table_flat(data, col_names, row_names, best, header=['Tissue'], colalign=("c
     table = np.insert(data, 0, row_names, axis=1)
     header.extend(col_names)
 
-    code = tabulate(table, headers=header, colalign=colalign, tablefmt="latex_raw", floatfmt=".4f")
+    code = tabulate(table, headers=header, colalign=colalign,
+                    tablefmt="latex_raw", floatfmt=".4f")
     return code
-
 
 
 def get_scores(results, metric_name):
@@ -69,9 +67,9 @@ def get_scores(results, metric_name):
     # print(info['labels'])
     for tn in tissue_names:
         res_tissue = results['datasets'][tn]['model_results']
-        res_model =[]
+        res_model = []
         for mn in model_names:
-            #TODO: refactor benchmark
+            # TODO: refactor benchmark
             if metric_name in ['ece', 'ece_uc']:
                 res_model.append(res_tissue[mn][metric_name])
             else:
@@ -118,9 +116,9 @@ def get_scores_uncalib(results, metric_name):
         res_tissue = results['datasets'][tn]['model_results']
         true_labels = results['datasets'][tn]['true_labels_test']
 
-        res_model =[]
+        res_model = []
         for mn in model_names:
-            #TODO: refactor benchmark
+            # TODO: refactor benchmark
             if metric_name in ['ece', 'ece_uc']:
                 res_model.append(res_tissue[mn][metric_name])
             else:
@@ -129,7 +127,8 @@ def get_scores_uncalib(results, metric_name):
                 n_splits = len(preds)
                 scores = []
                 for idx in range(n_splits):
-                    score_ = f1_score(true_labels[idx], preds[idx], average='macro')
+                    score_ = f1_score(
+                        true_labels[idx], preds[idx], average='macro')
                     scores.append(score_)
                 median = np.median(scores)
                 median = round(median, 4)
@@ -153,7 +152,7 @@ def load_res(path):
     fns = []
     for fn in os.listdir(path):
         if 'pkl' in fn:
-           fns.append(fn)
+            fns.append(fn)
     return fns
 
 
@@ -162,31 +161,33 @@ if __name__ == "__main__":
     path_res = os.path.join(parent_path, 'results/flat')
 
     fns = load_res(path_res)
-    fns = ['pca__flat.pkl', 'scanvi__flat.pkl', 'scanvi_b_flat.pkl', 'scanvi_bcm_flat.pkl']
-    fns = [ 'scanvi_bcm_flat.pkl']
+    fns = ['pca__flat.pkl', 'scanvi__flat.pkl',
+           'scanvi_b_flat.pkl', 'scanvi_bcm_flat.pkl']
+    fns = ['scanvi_bcm_flat.pkl']
 
     metric_name = 'F1_SCORE_MACRO'.lower()
     best = 'max'
-    
+
     # metric_name = 'ECE'.lower()
     # best = 'min'
 
     print(fns)
 
-    # ================================= flat 
-    if  True:
+    # ================================= flat
+    if True:
         print("\\begin{table}[h]")
         print("\\centering")
 
         for fn in fns:
             # if 'path-eval' in fn  or 'global' in fn:
-                # continue
+            # continue
             print('\n')
             with open(path_res + f'/{fn}', 'rb') as fh:
                 results = pickle.load(fh)
-            
+
             # data, tissue_names, model_names = get_scores(results, metric_name)
-            data, tissue_names, model_names = get_scores_uncalib(results, metric_name=None)
+            data, tissue_names, model_names = get_scores_uncalib(
+                results, metric_name=None)
             latex_code = table_flat(data, model_names, tissue_names, best)
 
             print(latex_code)
@@ -198,19 +199,18 @@ if __name__ == "__main__":
 
         print("\\end{table}")
 
-
     # ================================= flat mean
-    if  False:
+    if False:
         mean_data = []
         row_names = []
         col_names = []
         for fn in fns:
             # if 'path-eval' in fn  or 'global' in fn:
-                # continue
+            # continue
             print('\n')
             with open(path_res + f'/{fn}', 'rb') as fh:
                 results = pickle.load(fh)
-            
+
             data, tissue_names, model_names = get_scores(results, metric_name)
             row_names = model_names
             mean = np.mean(data, axis=0)
@@ -224,12 +224,14 @@ if __name__ == "__main__":
         mean_data = mean_data.T
         # print(mean_data.shape)
 
-        latex_code = table_flat(mean_data, col_names, row_names, best, header=['Models'], colalign=("center",) * 5)
+        latex_code = table_flat(mean_data, col_names, row_names, best, header=[
+                                'Models'], colalign=("center",) * 5)
 
         print("\\begin{table}[h]")
         print("\\centering")
-        
+
         print(latex_code)
 
-        print(f"\\caption{{Mean value of F1 score macro of all tissues per pre-processing method}}")
+        print(
+            f"\\caption{{Mean value of F1 score macro of all tissues per pre-processing method}}")
         print("\\end{table}")

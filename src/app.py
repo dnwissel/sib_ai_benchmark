@@ -1,42 +1,24 @@
 import argparse
-from sklearn.model_selection import StratifiedKFold, LeaveOneGroupOut
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-from sklearn.preprocessing import OrdinalEncoder
 from sklearn.metrics import accuracy_score, f1_score, balanced_accuracy_score, make_scorer
 
 import random
-import anndata
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 
 from functools import partial
-import os
-import pkgutil
-import importlib
-from utilities.logger import Logger
-import logging
-import json
 
-from utilities import dataLoader  as dl
+from utilities import dataLoader as dl
 from config import cfg
 
-from models import flatModels, globalModels
-from metrics.calibration_error import calibration_error
-from calibration.calibrate_model import CalibratedClassifier
-from benchmark.benchmark import Benchmark  #TODO Better importing schedule
-from statistics import mean
-from sklearn.decomposition import PCA, TruncatedSVD
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from benchmark.benchmark import Benchmark  # TODO Better importing schedule
+from sklearn.preprocessing import MinMaxScaler
 
-# TODO: Enable pass dataset matrix  to app 
+# TODO: Enable pass dataset matrix  to app
 # TODO: check if train and test have the sampe y.nunique()
 # TODO: outer metrics, rejection option , update res dict
 # TODO: documentation
 # TODO: dump Results to disk every three(interval) classifiers in case of training failure
 # TODO: pass list to model type
+
 
 def main():
     random.seed(5)
@@ -92,9 +74,9 @@ def main():
     args = parser.parse_args()
 
     # Load data
-    exp_name = args.experiment_name 
+    exp_name = args.experiment_name
     deselected_models = args.deselected_models
-    # cfg.debug = args.debug #TODO 
+    # cfg.debug = args.debug #TODO
     exp_cfg = cfg.experiments[exp_name]
     model_type = exp_cfg['model_type'] if args.model_type is None else args.model_type
     classifier_wrappers = dl.load_models(model_type, deselected_models)
@@ -111,16 +93,17 @@ def main():
         clsw.set_ppSteps(preprocessing_steps)
 
     # Run benchmark
-    bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets) 
+    bm = Benchmark(classifiers=classifier_wrappers, datasets=datasets)
 
-    model_type = '_'.join(model_type) if isinstance(model_type, list) else model_type
-    task_name = exp_name + '_' + model_type 
+    model_type = '_'.join(model_type) if isinstance(
+        model_type, list) else model_type
+    task_name = exp_name + '_' + model_type
     if deselected_models is not None:
         task_name = task_name + '_wo_' + '_'.join(deselected_models)
-    
+
     if args.path_eval:
         task_name = task_name + '_path-eval'
-    
+
     if args.extra:
         task_name = task_name + '_' + args.extra
 
@@ -129,11 +112,12 @@ def main():
 
     params = dict(
         # inner_metrics='accuracy',
-        inner_metrics=make_scorer(f1_score_macro) if not args.path_eval else 'f1_hier',
+        inner_metrics=make_scorer(
+            f1_score_macro) if not args.path_eval else 'f1_hier',
         outer_metrics={
-            'accuracy': accuracy_score, 
-            'balanced_accuracy_score': balanced_accuracy_score, 
-            'f1_score_macro': f1_score_macro, 
+            'accuracy': accuracy_score,
+            'balanced_accuracy_score': balanced_accuracy_score,
+            'f1_score_macro': f1_score_macro,
             'f1_score_weighted': f1_score_weighted
         },
         task_name=task_name,
@@ -141,10 +125,9 @@ def main():
         path_eval=args.path_eval
     )
     bm.run(**params)
-    bm.save(cfg.path_res) #TODO: refactor
+    bm.save(cfg.path_res)  # TODO: refactor
     bm.plot(cfg.path_res)
-    
+
 
 if __name__ == "__main__":
     main()
-

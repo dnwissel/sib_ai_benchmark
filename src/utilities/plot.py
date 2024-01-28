@@ -7,7 +7,7 @@ import pickle
 
 
 def subplot(data, ax, info, top=1.15, bottom=0.5):
-# def subplot(data, ax, info, top=0.15, bottom=-0.05):
+    # def subplot(data, ax, info, top=0.15, bottom=-0.05):
     bp = ax.boxplot(data, notch=False, sym='+', vert=True, whis=1.5)
     # fig.canvas.manager.set_window_title('A Boxplot Example')
 
@@ -20,7 +20,7 @@ def subplot(data, ax, info, top=1.15, bottom=0.5):
     # Add a horizontal grid to the plot, but make it very light in color
     # so we can use it for reading data values but not be distracting
     ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
-                alpha=0.5)
+                  alpha=0.5)
 
     ylabel = info['metric_name'].upper()
     ylabel = ylabel.replace('_', ' ')
@@ -102,16 +102,15 @@ def plot(results, metric_name, path, ncols=2):
     model_names = results['datasets'][tissue_names[0]]['model_results'].keys()
     model_names = sorted(model_names)
 
-
     info['labels'] = list(model_names)
     info['metric_name'] = metric_name
 
     # print(info['labels'])
     for tn in tissue_names:
         res_tissue = results['datasets'][tn]['model_results']
-        res_model =[]
+        res_model = []
         for mn in model_names:
-            #TODO: refactor benchmark
+            # TODO: refactor benchmark
             if metric_name in ['ece', 'ece_uc']:
                 res_model.append(res_tissue[mn][metric_name])
             else:
@@ -133,14 +132,14 @@ def plot(results, metric_name, path, ncols=2):
                     subplot(data[cnt], axs[row_idx, col_idx], info)
                 else:
                     axs[row_idx, col_idx].axis('off')
-                cnt += 1 
+                cnt += 1
         else:
             if cnt < len(tissue_names):
                 info['tissue_name'] = tissue_names[cnt]
                 subplot(data[cnt], axs[row_idx], info)
             else:
                 axs[row_idx].axis('off')
-            cnt += 1 
+            cnt += 1
 
     # configure x/y labels
     # for ax in axs.flat:
@@ -149,11 +148,12 @@ def plot(results, metric_name, path, ncols=2):
     plt.savefig(path, dpi=450)
     # plt.show()
 
+
 def load_res(path):
     fns = []
     for fn in os.listdir(path):
         if 'pkl' in fn:
-           fns.append(fn)
+            fns.append(fn)
     return fns
 
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
     for fn in fns:
         # if 'path-eval' in fn  or 'global' in fn:
-            # continue
+        # continue
 
         with open(path_res + f'/{fn}', 'rb') as fh:
             results = pickle.load(fh)

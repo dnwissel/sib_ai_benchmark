@@ -31,7 +31,7 @@ def run_IR(probas, encoder):
     for row in probas:
         # print(row)
         q = -1 * row.T
-        x = solve_qp(0.5 * P, q, G=G, h=h,lb=lb, ub=ub, solver="osqp")
+        x = solve_qp(0.5 * P, q, G=G, h=h, lb=lb, ub=ub, solver="osqp")
         probas_post.append(x)
 
         # plot
@@ -58,11 +58,11 @@ def run_IR(probas, encoder):
             plt.xlabel('Node_index')
             # plt.ylabel('value')
             # plt.title('Plot of a Sequence of Numbers')
-            
+
             for ax in axs[:2]:
                 ax.axhline(y=0.5, color='r', linestyle='dotted')
             axs[2].axhline(y=0, color='g', linestyle='dotted')
-            
+
             plt.subplots_adjust(hspace=0.4)
 
             plt.savefig(f'figure_{cnt}')
@@ -93,11 +93,12 @@ def _lhs_dp(node, en, row, memo):
     value = memo[node]
     if value != -1:
         return value
-    s_prime_pos = list(map(partial(_lhs_dp, en=en, row=row, memo=memo), en.predecessor_dict[node])) 
+    s_prime_pos = list(
+        map(partial(_lhs_dp, en=en, row=row, memo=memo), en.predecessor_dict[node]))
     lh = row[node] * (1 - torch.prod(1 - torch.tensor(s_prime_pos)))
     memo[node] = lh
     return lh
-    
+
 
 def infer_cs(probas, encoder):
     y_pred = np.zeros(probas.shape[0])
@@ -106,14 +107,14 @@ def infer_cs(probas, encoder):
 
     for row_idx, row in enumerate(probas):
         memo = np.zeros(num_nodes) - 1
-        
+
         lhs = np.zeros(len(encoder.label_idx))
         for root in encoder.roots_idx:
             memo[root] = 1.0
 
         for idx, label in enumerate(encoder.label_idx):
             lh_ = _lhs_dp(label, encoder, row, memo)
-            lh_children = np.prod(1 -  row[list(encoder.successor_dict[label])])
+            lh_children = np.prod(1 - row[list(encoder.successor_dict[label])])
             lhs[idx] = lh_ * lh_children
         y_pred[row_idx] = encoder.label_idx[np.argmax(lhs)]
 
@@ -140,7 +141,7 @@ def infer_path_cs(probas, encoder):
                 continue
 
             lh_ = _lhs_dp(label, encoder, row, memo)
-            lh_children = np.prod(1 -  row[list(encoder.successor_dict[label])])
+            lh_children = np.prod(1 - row[list(encoder.successor_dict[label])])
             # lhs[label] = lh_ * lh_children
             lhs[label] = lh_
         probas_margin[row_idx] = lhs
@@ -177,6 +178,7 @@ def infer_1(probas, encoder, threshold=0.5):
             y_pred[row_idx] = preds[idx]
     return y_pred.astype(int)
 
+
 def infer_2(probas, encoder, threshold=0.5):
     """
     Select index of the last 1 on the path as the preds
@@ -185,10 +187,9 @@ def infer_2(probas, encoder, threshold=0.5):
     y_pred = np.zeros(predicted.shape[0])
 
     for row_idx, row in enumerate(predicted):
-        for idx in range(len(row) - 1 , -1, -1):
+        for idx in range(len(row) - 1, -1, -1):
             # idx = len(row) - 1 - ridx
             if row[idx] and idx in encoder.label_idx:
                 y_pred[row_idx] = idx
                 break
     return y_pred
-
