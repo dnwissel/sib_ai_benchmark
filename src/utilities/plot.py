@@ -105,8 +105,6 @@ def plot(results, metric_name, path, ncols=2):
 
     info['labels'] = list(model_names)
     info['metric_name'] = metric_name
-
-    # print(info['labels'])
     for tn in tissue_names:
         res_tissue = results['datasets'][tn]['model_results']
         res_model = []
@@ -122,8 +120,6 @@ def plot(results, metric_name, path, ncols=2):
     nrows = len(tissue_names) // ncols + 1
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(10, 12))
     fig.subplots_adjust(left=0.075, right=0.95, top=0.9, bottom=0.25)
-
-    # print(axs.shape)
     cnt = 0
     for row_idx in range(axs.shape[0]):
         if len(axs.shape) > 1:

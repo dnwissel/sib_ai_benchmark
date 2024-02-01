@@ -65,7 +65,6 @@ class Encoder:
         Y = []
         if is_idx:
             for node in nodes:
-                # print(node, self.G_idx.nodes())
                 y_ = np.zeros(num_class)
                 if node in self.G_idx.nodes():
                     y_[[a for a in nx.ancestors(self.G_idx, node)]] = 1

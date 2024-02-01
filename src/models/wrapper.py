@@ -15,6 +15,17 @@ from utilities.hier import Encoder
 
 
 class Wrapper:
+    """
+        A base class to run machine learning models and add additional functionalities 
+    so that the models can be fit into the benchmark class.
+
+        This class serves as a wrapper for machine learning models, allowing them to be 
+    easily integrated into a benchmarking framework. In Particular, it provides methods 
+    for model initialization, preprocessing, hyperparameter tuning space, calibration, 
+    and prediction. It also includes methods for setting and getting various attributes 
+    related to the model that has been fitted.
+    """
+
     def __init__(
         self,
         model,
@@ -92,7 +103,6 @@ class Wrapper:
         y_train, y_test = y_train, le.transform(
             test_y_label.to_numpy().reshape(-1, 1)).flatten()
 
-        # print(y_test)
         return pipeline, param_grid, y_train, y_test
 
     def __validate_input(self, model=None):
@@ -101,18 +111,15 @@ class Wrapper:
         # TODO: Validates fit and predict methods in model
 
     def ece(self, y_test, y_test_pred,  probas):
-        # print(y_test, y_test_pred, probas)
         ece = calibration_error(y_test, y_test_pred, probas)
         return ece
 
     def fit_calibrater(self, X, y):
         if self.calibrater is not None:
             self.calibrater.set_model(self)
+
             if hasattr(self.calibrater.criterion, 'set_encoder'):
                 self.calibrater.criterion.set_encoder(self.encoder)
-                # y = self.encoder.transform(y)
-
-            # y = self.encoder.transform(y)
             self.calibrater = self.calibrater.fit(X, y)
 
     def predict_proba(self, X):
@@ -141,7 +148,6 @@ class Wrapper:
             logits = self.calibrater.get_logits(X)
             probas_calib_all = self.nonlinear(logits)
             probas_calib = probas_calib_all
-            # print(probas_calib, probas_uncalib)
 
             if not self.path_eval:
                 probas_calib = self.predict_label_proba(probas_calib_all)
@@ -162,15 +168,11 @@ class Wrapper:
             # if probas_calib_all is None:
             logits = self.calibrater.get_logits(X)
             probas_calib_all = self.nonlinear(logits)
-            # print(probas_calib_all[1, :])
 
             if self.path_eval:
                 preds_calib = probas_calib_all > threshold
             else:
                 preds_calib = self.predict_label(probas_calib_all)
-
-        # print(preds_calib)
-        # print(preds_uncalib)
         return preds_calib, preds_uncalib
 
     def predict_label(self, probas):
@@ -231,7 +233,7 @@ class WrapperHier(Wrapper):
         return pipeline, param_grid, y_train, y_test
 
     def ece_path(self, y_true_encoded, y_test_pred,  probas):
-        sum = 0
+        sum_ = 0
         # y_true_encoded = self.encoder.transform(y_test)
         num_col = y_true_encoded.shape[1]
         num_row = y_true_encoded.shape[0]
@@ -246,16 +248,15 @@ class WrapperHier(Wrapper):
             proba_col = probas[:, col_idx]
             mask = (y_true_col == 0)
             idxs_0 = idxs[mask]
-            # print(idxs_0)
 
             proba_col[idxs_0] = 1 - proba_col[idxs_0]
             ece_col = calibration_error(
                 y_true_col, y_test_pred[:, col_idx], proba_col)
 
-            sum += ece_col
+            sum_ += ece_col
 
         num_col -= len(self.encoder.roots_idx)
-        ece = sum / num_col
+        ece = sum_ / num_col
         return ece
 
     def get_logits(self, X):
@@ -276,7 +277,6 @@ class WrapperSVM(Wrapper):
     def get_logits(self, X):
         confidence = self.model_fitted.decision_function(X)
         if confidence.ndim == 1 or confidence.shape[1] == 1:
-            # print(confidence.shape)
             confidence = np.reshape(confidence, (-1, 1))
             # label 1 considered as positive,
             confidence = np.concatenate(

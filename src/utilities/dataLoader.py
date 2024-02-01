@@ -34,10 +34,7 @@ def load_pre_splits(path, batch_min=3, is_row_id=True):
         for i in range(0, len(v), 2):
             ann_train = anndata.read_h5ad(path + '/' + v[i])
             ann_test = anndata.read_h5ad(path + '/' + v[i + 1])
-            # print(ann_train.obs.columns)
             if is_row_id:
-                # print(ann_train.obs['y'].shape)
-                # print(ann_train.obs['batch_id'].shape)
                 splits_data.setdefault(k, []).append(
                     [(ann_train.X, ann_train.obs['y'], ann_train.obs['batch_id'], ann_train.obs['id']),
                      (ann_test.X, ann_test.obs['y'], ann_test.obs['batch_id'], ann_test.obs['id'])]
@@ -126,7 +123,6 @@ def load_full_hier(path):
     hier = pd.read_csv(path, sep='\t')
     # hier = hier.replace(':', '-', regex=True)
     edges = hier.to_records(index=False).tolist()
-    # print(f"#Edges:{len(edges)}")
     G = nx.DiGraph(edges).reverse()
     roots_label = [v for v, d in G.in_degree() if d == 0]
     if len(roots_label) > 1:
@@ -135,5 +131,4 @@ def load_full_hier(path):
         roots_label.append('root')
         # Add missing labels in the Hier
         G.add_edge('root', 'FBbt:00005073')
-    # print(roots_label)
     return G, roots_label

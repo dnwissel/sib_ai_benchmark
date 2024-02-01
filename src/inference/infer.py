@@ -11,9 +11,8 @@ from qpsolvers import solve_qp
 
 def run_IR(probas, encoder):
     """ 
-    ref to https://qpsolvers.github.io/qpsolvers/quadratic-programming.html
+    Reference to https://qpsolvers.github.io/qpsolvers/quadratic-programming.html
     """
-
     nodes = encoder.G_idx.nodes()
     num_nodes = len(nodes)
     P = np.zeros((num_nodes, num_nodes))
@@ -30,7 +29,6 @@ def run_IR(probas, encoder):
 
     cnt = 0
     for row in probas:
-        # print(row)
         q = -1 * row.T
         x = solve_qp(0.5 * P, q, G=G, h=h, lb=lb, ub=ub, solver="osqp")
         probas_post.append(x)
@@ -38,7 +36,6 @@ def run_IR(probas, encoder):
         # plot
         plot = False
         if plot and cnt % 1000 == 0:
-            # print(x - row)
             optimal = x
             diff = x - row
             num_nodes = len(x)
@@ -86,7 +83,6 @@ def _get_C(nodes, encoder):
             row[i] = 1.0
             row[child] = -1.0
             C.append(row)
-    # print(np.array(C)[:5])
     return np.array(C)
 
 
@@ -133,7 +129,6 @@ def infer_path_cs(probas, encoder):
         lhs = np.zeros(num_nodes)
 
         for root in encoder.roots_idx:
-            # print(root)
             lhs[root] = 1.0
             memo[root] = 1.0
 

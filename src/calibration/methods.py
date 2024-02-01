@@ -21,7 +21,6 @@ class VectorScaling(nn.Module):
         # logits = logits / self.W
         # logits = torch.matmul(logits, self.W)
         # return F.softmax(logits, dim=-1)
-        # print(self.W)
         return logits
 
 

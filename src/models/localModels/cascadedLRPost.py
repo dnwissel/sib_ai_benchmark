@@ -16,20 +16,20 @@ class CascadedLRPost(LocalModel):
             return log_mp
 
         anc_mask = anc_matrix[idx]
-        sum = 0
+        sum_ = 0
         for idx_anc, val in enumerate(anc_mask):
             if val == 0:
                 continue
             anc_proba = log_marginal_probas[idx_anc]
+
             if anc_proba is not None:
-                sum += anc_proba
+                sum_ += anc_proba
             else:
                 # log_proba_anc = log_probas[idx_anc]
-                sum += self._compute_marginals(anc_matrix,
-                                               log_marginal_probas, log_probas, idx_anc)
-        log_marginal_probas[idx] = sum + log_proba_current
-        # print(type(log_marginal_probas[idx]))
-        return sum
+                sum_ += self._compute_marginals(anc_matrix,
+                                                log_marginal_probas, log_probas, idx_anc)
+        log_marginal_probas[idx] = sum_ + log_proba_current
+        return sum_
 
     def get_marginal_proba(self, log_probas_full):
         """Algo in CELLO paper, actually AND logic"""
@@ -40,7 +40,6 @@ class CascadedLRPost(LocalModel):
 
         marginal_probas_full = []
         for log_probas in log_probas_full:
-            # print(log_probas)
             log_marginal_probas = np.full(
                 shape=len(log_probas), fill_value=None)
             roots_idx = self.encoder.roots_idx
@@ -49,9 +48,6 @@ class CascadedLRPost(LocalModel):
             for idx in range(len(log_probas)):
                 self._compute_marginals(
                     anc_matrix, log_marginal_probas, log_probas, idx)
-                # print(log_marginal_probas[idx])
-
-            # print(log_marginal_probas)
             log_marginal_probas = log_marginal_probas.astype(float)
             marginal_probas = np.exp(log_marginal_probas)
             marginal_probas_full.append(marginal_probas)
@@ -75,7 +71,6 @@ class CascadedLRPost(LocalModel):
                 col = np.log(col)
             probas.append(col)
         probas = np.array(probas).T
-        # print(None in probas.flatten())
         return probas
 
     def predict(self, X, threshold=0.5):

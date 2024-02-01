@@ -5,8 +5,6 @@ def calibration_error(y_true, y_pred, y_prob, sample_weight=None, norm='l1',
                       n_bins=10, strategy='uniform', reduce_bias=True):
     """Compute calibration error of a multi-class classifier, which is adapted from code for a binary case in sklearn 
 
-    Read more in the :ref:`User Guide <calibration>`.
-
     Parameters
     ----------
     y_true : array-like of shape (n_samples,)
@@ -89,7 +87,6 @@ def calibration_error(y_true, y_pred, y_prob, sample_weight=None, norm='l1',
         quantiles = np.percentile(y_prob, np.arange(0, 1, 1.0 / n_bins) * 100)
     elif strategy == 'uniform':
         quantiles = np.arange(0, 1, 1.0 / n_bins)
-        # print(quantiles)
     else:
         raise ValueError(
             f"Invalid entry to 'strategy' input. Strategy must be either "

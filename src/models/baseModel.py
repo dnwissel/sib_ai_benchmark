@@ -1,8 +1,7 @@
 import numpy as np
-import torch.optim as optim
 from scipy.stats import loguniform, uniform
 from sklearn.base import clone
-from torch import nn
+from torch import nn, optim
 
 
 class MLP(nn.Module):
@@ -10,14 +9,13 @@ class MLP(nn.Module):
         super().__init__()
 
         MLP.en = en
-
         layers = []
         fixed_neuron_num = 2 ** neuron_power
 
         # Configure input layer
         layer = [
             nn.Linear(dim_in, fixed_neuron_num),
-            # nn.Dropout(dor_input),
+            nn.Dropout(dor_input),
             nonlin()
         ]
         if batch_norm:
@@ -41,7 +39,7 @@ class MLP(nn.Module):
         layers.append(nn.Linear(fixed_neuron_num, dim_out))
         self.layers_seq = nn.Sequential(*layers)
 
-    def forward(self, X, **kwargs):
+    def forward(self, X):
         X = self.layers_seq(X)
         return X
 
@@ -69,13 +67,16 @@ class LocalModel:
         encoded_y = self.encoder.transform(y)
         self.node_indicators = encoded_y.T
         self.trained_classifiers = np.zeros(encoded_y.shape[1], dtype=object)
+
         for idx, node_y in enumerate(self.node_indicators):
             unique_node_y = np.unique(node_y)
+
             if len(unique_node_y) == 1:
                 cls = unique_node_y[0]
             else:
                 cls = clone(self.base_learner)
                 cls = cls.fit(X, node_y)
+
             self.trained_classifiers[idx] = cls
 
     def set_encoder(self, encoder):

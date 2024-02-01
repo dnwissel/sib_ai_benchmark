@@ -1,4 +1,5 @@
 import numpy as np
+from qpsolvers import solve_qp
 from scipy import sparse
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
@@ -6,9 +7,6 @@ from sklearn.preprocessing import StandardScaler
 from inference.infer import infer_1
 from models.baseModel import LocalModel
 from models.wrapper import WrapperLocal
-# from sklearn.isotonic import isotonic_regression
-# from quadprog import solve_qp
-from qpsolvers import solve_qp
 
 
 class IsotonicRegressionPost(LocalModel):
@@ -32,7 +30,6 @@ class IsotonicRegressionPost(LocalModel):
             q = -1 * row.T
             x = solve_qp(0.5 * P, q, G=G, h=h, lb=lb, ub=ub, solver="osqp")
             probas_post.append(x)
-        # print(x - row)
         return np.array(probas_post)
 
     def _get_C(self, nodes):
@@ -48,7 +45,6 @@ class IsotonicRegressionPost(LocalModel):
                 row[i] = 1.0
                 row[child] = -1.0
                 C.append(row)
-        # print(np.array(C).shape, num_nodes)
         return np.array(C)
 
     def predict_proba(self, X, raw=False):

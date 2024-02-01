@@ -10,26 +10,23 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
-# TODO : Dataloader
 
-
-def train_model(model, input, target, criterion, optimizer, epochs):
-    for epoch in range(epochs):
+def train_model(model, input_logits, target, criterion, optimizer, epochs):
+    for _ in range(epochs):
         optimizer.zero_grad()
-        output = model(input)
+        output = model(input_logits)
         loss = criterion(output, target)
-        # print(f"Epoch {epoch}, Loss: {loss.item()}")
         loss.backward()
         optimizer.step()
     return model
 
 
-def train_model_lbfgs(model, input, target, criterion):
-    optimizer = optim.LBFGS(model.parameters(), lr=0.01, max_iter=1000)
+def train_model_lbfgs(model, input_logits, target, criterion, lr):
+    optimizer = optim.LBFGS(model.parameters(), lr=lr, max_iter=1000)
 
     def closure():
         optimizer.zero_grad()
-        output = model(input)
+        output = model(input_logits)
         loss = criterion(output, target)
         loss.backward()
         return loss
@@ -43,7 +40,6 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         self,
         model=None,
         criterion=None,
-        # optimizer=optim.Adam(model.parameters(), lr=0.5),
         method='TS',
         encoder=None,
         lr=0.01
@@ -60,7 +56,6 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         self.classifier = model
 
     def fit(self, X, y):
-        # print(y)
         logits = self.classifier.get_logits(X)
         if self.method_name == 'TS':
             method = TemperatureScaling().to(device)
@@ -69,45 +64,31 @@ class CalibratedClassifier(BaseEstimator, ClassifierMixin):
         else:
             raise ValueError('Invalid method name.')
 
-        self.optimizer = optim.Adam(method.parameters(), lr=self.lr)
-
         with torch.no_grad():
             if torch.is_tensor(logits):
-                input = logits.to(device)
+                input_logits = logits.to(device)
             else:
-                input = torch.from_numpy(logits).to(torch.float).to(device)
+                input_logits = torch.from_numpy(
+                    logits).to(torch.float).to(device)
 
             if isinstance(y, pd.Series):
                 target = torch.from_numpy(y.to_numpy()).to(device)
             else:
-                # y = y.astype(np.float32)
                 target = torch.from_numpy(y).to(device)
 
-        # target = F.one_hot(target, num_classes=logits.shape[1])
-        # target = target.float()
-
-        # print(input.device, target.device)
-        # self.method = train_model(method, input, target, self.criterion, self.optimizer, 50)
         self.method_trained = train_model_lbfgs(
-            method, input, target, self.criterion)
+            method, input_logits, target, self.criterion, self.lr)
         return self
 
     # #TODO: argmax for PS/VS
-    # def predict(self, X):
-    #     preds = self.classifier.model_fitted.predict(X)
-    #     if torch.is_tensor(preds):
-    #         return preds.numpy().astype(int)
-    #     return preds.astype(int)
-
     def get_logits(self, X):
         logits = self.classifier.get_logits(X)
-        # print(logits)
         if torch.is_tensor(logits):
-            input = logits
+            input_logits = logits
         else:
-            input = torch.from_numpy(logits).float().to(device)
+            input_logits = torch.from_numpy(logits).float().to(device)
 
-        output = self.method_trained(input)
+        output = self.method_trained(input_logits)
 
         if self.method_name == 'TS':
             params = list(self.method_trained.parameters())

@@ -62,7 +62,6 @@ class MCLoss(nn.Module):
         self.encoder = encoder
 
     def forward(self, output, target):
-        # print(target)
         target = self.encoder.transform(target.cpu().numpy())
         target = target.astype(np.double)
         target = torch.from_numpy(target).to(device)
@@ -74,7 +73,6 @@ class MCLoss(nn.Module):
         train_output = (1-target)*constr_output.double() + target*train_output
 
         # MCLoss
-        # print(train_output[:,self.encoder.idx_to_eval ], target[:,self.encoder.idx_to_eval])
         # mask = train_output < 0
         # train_output[mask] = 0
         loss = self.criterion(

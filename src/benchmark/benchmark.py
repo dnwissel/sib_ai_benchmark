@@ -13,9 +13,6 @@ from metrics.hier import f1_hier, precision_hier, recall_hier
 from utilities.logger import Logger
 from utilities.plot import plot
 
-# import models
-
-
 # TODO: refactor to dataloader module
 # TODO: Enable pass dataset matrix  to app
 # TODO: check if train and test have the sampe y.nunique()
@@ -85,7 +82,6 @@ class Benchmark:
                     y_train, y_test = train[1], test[1]
                     inner_groups = train[2]
                     row_ids_split = test[3]
-                    # print(X_train.shape, inner_groups.shape)
 
                 # Initialise model
                 pipeline, param_grid, y_train, y_test = classifier.init_model(
@@ -118,7 +114,6 @@ class Benchmark:
                     inner_metrics = make_scorer(f1_hier_)
 
                     try:
-                        # print( pipeline.steps[-1][1].path_eval)
                         # pipeline.steps[-1][1].path_eval = True
                         # pipeline.steps[-1][1].set_predictPath(True)
                         classifier.model.set_predictPath(True)
@@ -188,12 +183,8 @@ class Benchmark:
                         )
                 classifier.set_modelFitted(model_selected)
                 classifier.fit_calibrater(X_val_cal, y_val_cal)
-
-                # print("enter")
                 proba_calib, proba_uncalib = classifier.predict_proba(X_test)
                 pred_calib, pred_uncalib = classifier.predict(X_test)
-                # print(proba_calib, proba_uncalib)
-                # print(pred_calib, pred_uncalib)
 
                 ece = None
                 ece_uc = None
@@ -213,9 +204,6 @@ class Benchmark:
                     if pred_calib is not None:
                         ece = classifier.ece(y_test, pred_calib, proba_calib)
 
-                # print(ece)
-                # print(ece_uc)
-
                 if ece is None:
                     pred_calib = pred_uncalib
                     proba_calib = proba_uncalib
@@ -234,11 +222,9 @@ class Benchmark:
 
                 # y_test_pred = pred_uncalib
                 y_test_pred = pred_calib
-                # print(y_test_pred)
 
                 # Calculate metrics
                 for metric_name, metric in outer_metrics.items():
-                    # print(y_test, y_test_pred)
                     score = metric(y_test, y_test_pred)
                     scores = model_result.setdefault('scores', {})
                     scores.setdefault(f'{metric_name}', {}).setdefault(
@@ -262,19 +248,19 @@ class Benchmark:
 
         return res, true_labels_test, test_row_ids, nodes_label, true_labels_test_encoded, idx_to_evals
 
-    def save(self, dir):
-        if not os.path.exists(dir):
-            os.makedirs(dir)
+    def save(self, dir_):
+        if not os.path.exists(dir_):
+            os.makedirs(dir_)
 
-        # with open(os.path.join(dir, self.task_name), 'w') as file:
+        # with open(os.path.join(dir_, self.task_name), 'w') as file:
         #     json.dump(self.results, file, indent=3, separators=(', ', ': '))
-        with open(os.path.join(dir, self.task_name + '.pkl'), 'wb') as fh:
+        with open(os.path.join(dir_, self.task_name + '.pkl'), 'wb') as fh:
             pickle.dump(self.results, fh, pickle.HIGHEST_PROTOCOL)
 
-    def plot(self, dir, metric_name='f1_score_macro'):
+    def plot(self, dir_, metric_name='f1_score_macro'):
         if self.path_eval:
             metric_name = 'f1_hier'
-        plot(self.results, metric_name, os.path.join(dir, self.task_name))
+        plot(self.results, metric_name, os.path.join(dir_, self.task_name))
 
     def run(self, inner_metrics, outer_metrics, task_name='testing_run', random_seed=15, description='', is_pre_splits=True, is_outer_cv=False, path_eval=False):
         self.task_name = task_name
@@ -306,7 +292,6 @@ class Benchmark:
                 inner_cv = StratifiedGroupKFold(n_splits=4)
                 outer_cv = StratifiedGroupKFold(n_splits=5)
                 # inner_cv = GroupKFold(n_splits=4)
-                # print(dn)
             else:
                 inner_cv = LeaveOneGroupOut()
 
@@ -325,7 +310,6 @@ class Benchmark:
                 'test_row_ids': test_row_ids,
                 'nodes_label': nodes_label
             }})
-            # print(nodes_label)
 
         self.logger.write(
             '~~~TASK COMPLETED~~~\n\n',

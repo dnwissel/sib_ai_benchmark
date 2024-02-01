@@ -9,15 +9,12 @@ def f1_hier(y_true, y_pred, en):
 
     y_true_labels = to_labels(y_true_encoded[:, en.idx_to_eval])
     y_pred_labels = to_labels(y_pred[:, en.idx_to_eval])
-
-    # print(y_true_labels, y_pred_labels)
     score = f1(y_true_labels, y_pred_labels)
     return score
 
 
 def recall_hier(y_true, y_pred, en):
     y_true_encoded = en.transform(y_true)
-    # print(y_true_encoded, y_pred)
 
     y_true_labels = to_labels(y_true_encoded[:, en.idx_to_eval])
     y_pred_labels = to_labels(y_pred[:, en.idx_to_eval])
@@ -27,7 +24,6 @@ def recall_hier(y_true, y_pred, en):
 
 def precision_hier(y_true, y_pred, en):
     y_true_encoded = en.transform(y_true)
-    # print(y_true_encoded, y_pred)
 
     y_true_labels = to_labels(y_true_encoded[:, en.idx_to_eval])
     y_pred_labels = to_labels(y_pred[:, en.idx_to_eval])
@@ -40,12 +36,8 @@ def f1_hier_report(y_true, y_pred, idx_to_eval):
 
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
-    # print(y_true.shape)
-    # print(y_pred.shape)
     y_true_labels = to_labels(y_true[:, idx_to_eval])
     y_pred_labels = to_labels(y_pred[:, idx_to_eval])
-
-    # print(y_true_labels, y_pred_labels)
     score = f1(y_true_labels, y_pred_labels)
     return score
 
