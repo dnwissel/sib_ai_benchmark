@@ -1,10 +1,17 @@
 anndata
 matplotlib
 numpy
+networkx
 pandas
 pre-commit
+quadprog
 scanpy
 scipy
 scikit-learn
+skorch
+torch
 wget
+gdown
 
+hiclass
+qpsolvers

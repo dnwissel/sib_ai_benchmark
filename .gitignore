@@ -377,11 +377,15 @@ renv/*
 
 # Data file
 data-raw/*
-results/.temp
+results/*
 
 # Log
 log
 *.log
 
+.gitignore
+localPlay/*
 
+*.png
+*.pdf
 
