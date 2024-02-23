@@ -397,4 +397,6 @@ localPlay/*
 
 *.png
 *.pdf
+.idea
+.pylintrc
 
