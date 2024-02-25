@@ -1,4 +1,4 @@
-# Celltype Classification Benchmark with both Hierarchical and Non-hierarchical Labels
+# Benchmark of Cell-typing with both Hierarchical and Non-hierarchical Labels
 
 ## Table of Contents
 
@@ -87,7 +87,7 @@ The Benchmark architecture is introduced in a report which can be found [here](h
 
 ### Download data
 
-Processed data per pre-processing method as well as the hierarchical information are stored  [here](https://drive.google.com/drive/folders/1mfgreVf5l1gshCcc10JTzUZCd2E2kMlh?usp=drive_link) on google drive. `gDrive` can be used for downloading. Data should be put under the `data-raw` folder as listed below.
+Processed data per pre-processing method as well as the hierarchical information are stored  [here](https://drive.google.com/drive/folders/1zBQmWU-yTmLVWCjmy7Ov0E-TKJTWty2D?usp=drive_link) on google drive. `gDrive` can be used for downloading. Data should be put under the `data-raw` folder as listed below.
 
 ```
 data-raw
@@ -137,7 +137,7 @@ Upon completion, the app generates a pickle object and a PDF file. The pickle ob
 
 ### Add new model or data
 
-A new model can be added to one of the folders under the parent folder `~/sib_ai_benchmark/src/models`: `flatModels`, `globalModels` or `localModels` . It should be wrapped with a specific name Which can be referred for running. Please check existing model file for use case.
+A new model can be added to one of the folders under the parent folder `~/sib_ai_benchmark/src/models`: `flatModels`, `globalModels` or `localModels` . It should be wrapped with a specific name which can be referred for running. Please check existing model file for use case.
 
 To add a new dataset, an entry can be added to the  dictionary `experiments` in `cfg.py` file in `~/sib_ai_benchmark/src/config`.The dictionary key can be referred to run the specific method with the new dataset same as the [previous section](#commands-to-run).
 
